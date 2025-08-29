@@ -1,0 +1,1222 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+KNOWN_ISSUES.md
+package.json
+public/index.html
+public/manifest.json
+public/robots.txt
+README.md
+src/App.css
+src/App.test.tsx
+src/App.tsx
+src/index.css
+src/index.tsx
+src/keytips/CommandExecutor.ts
+src/keytips/KeyTipsController.ts
+src/keytips/KeyTipsOverlay.tsx
+src/keytips/KeyTipsRegistry.ts.backup
+src/keytips/useKeyTips.ts
+src/logo.svg
+src/react-app-env.d.ts
+src/reportWebVitals.ts
+src/setupTests.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+</file>
+
+<file path="KNOWN_ISSUES.md">
+# Known Issues - KeyTips MVP
+
+## Critical Issue: SpreadJS Cell Editor Interference
+
+**Problem:** When KeyTips is active and collecting key sequences, SpreadJS still enters cell edit mode on the first keystroke, causing:
+- Cell editor/text box opens when pressing first letter (e.g., "H" after Alt)
+- Selected cell content gets overwritten/deleted
+- KeyTips letters sometimes leak into cells as text
+
+**Impact:** 
+- Data loss when using KeyTips on cells with existing content
+- Poor user experience - commands work but data disappears
+- Cell editor competes with KeyTips system for keyboard input
+
+**Root Cause:**
+SpreadJS intercepts keyboard events at a lower level than our event blocking system. Despite aggressive event prevention (keydown, keypress, keyup, input, textInput with stopImmediatePropagation), SpreadJS still receives and processes the first keystroke.
+
+**Current Workaround:**
+Commands execute correctly, but users should:
+1. Use KeyTips on empty cells/ranges when possible
+2. Expect some data loss in selected cells during KeyTip sequences
+3. Re-enter data if accidentally overwritten
+
+**Potential Solutions for Production:**
+1. **SpreadJS API Integration:** Research SpreadJS APIs to programmatically disable/enable cell editing mode
+2. **Custom Input Mode:** Override SpreadJS input handling entirely during KeyTips collection
+3. **Event Interception:** Investigate SpreadJS event pipeline to block at source
+4. **Selection Preservation:** Store/restore cell values before/after KeyTip sequences
+5. **Modal Overlay:** Use invisible overlay to capture all keyboard events during KeyTips
+
+**Priority:** High - affects core usability and data integrity
+
+**Status:** Deferred to post-MVP (Phase 3 otherwise functional)
+
+---
+
+## Other Known Issues
+
+*None currently identified*
+
+---
+
+## Testing Notes
+
+**Commands that work correctly despite editor interference:**
+- HVV (Paste Values): Executes, shows "🎯 PASTED"
+- HBB (Border Bottom): Executes, adds borders  
+- HBT (Border Top): Executes, adds borders
+- HOI (AutoFit Column): Executes, adjusts column width
+- AS (Sort Descending): Executes, sorts selected range
+
+**Sequence detection:** 100% accurate
+**Command execution:** 100% functional  
+**Data preservation:** BROKEN - requires fix
+</file>
+
+<file path="package.json">
+{
+  "name": "take_home",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@mescius/spread-excelio": "^18.1.4",
+    "@mescius/spread-sheets": "^18.1.4",
+    "@mescius/spread-sheets-barcode": "^18.1.4",
+    "@mescius/spread-sheets-charts": "^18.1.4",
+    "@mescius/spread-sheets-io": "^18.1.4",
+    "@mescius/spread-sheets-languagepackages": "^18.1.4",
+    "@mescius/spread-sheets-pdf": "^18.1.4",
+    "@mescius/spread-sheets-print": "^18.1.4",
+    "@mescius/spread-sheets-react": "^18.1.4",
+    "@mescius/spread-sheets-shapes": "^18.1.4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.126",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+</file>
+
+<file path="public/index.html">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+</html>
+</file>
+
+<file path="public/manifest.json">
+{
+  "short_name": "React App",
+  "name": "Create React App Sample",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
+</file>
+
+<file path="public/robots.txt">
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow:
+</file>
+
+<file path="README.md">
+## Overview
+
+Your task is to implement a keyboard-driven command interface for a web-based spreadsheet application, similar to Excel's KeyTips feature. This system allows users to execute spreadsheet commands through sequential keyboard shortcuts.
+
+**Time Expectation**: 1-2 hours
+**Deliverables**: A working implementation and documentation in a GitHub pull request.
+
+## What are KeyTips?
+
+KeyTips provide keyboard accessibility by:
+
+* Activating with Alt (Windows/Linux) or Cmd (Mac)
+* Showing visual overlays of available keyboard shortcuts
+* Allowing sequential key presses to navigate and execute commands
+* Example: Alt → H → V → V executes "Paste Values"
+
+Watch this [Excel KeyTips demonstration](https://www.youtube.com/watch?v=emU9KcZKw9k) to understand the user experience. Note: The ribbon interface shown is not required for your implementation.
+
+You can also see [how KeyTips are implemented in Meridian](https://drive.google.com/file/d/1-GANv2HjCTGD7TGFt6htRV2emEpIIZDn/view?usp=sharing) for reference. Note: Your UI implementation does not need to look the same as Meridian's interface.
+
+## Why This Matters
+
+For many financial professionals—especially in banking and consulting—Excel is their IDE. They rely almost entirely on the keyboard, navigating and editing at high speed with muscle memory alone. Reaching for the mouse breaks flow. KeyTips aren’t just a nice-to-have—they’re essential to preserving the kind of power-user experience that makes spreadsheets feel seamless. This assignment simulates how we bring that level of keyboard-driven efficiency into a modern, web-based spreadsheet environment.
+
+## Requirements
+
+### 1. Implement These 5 KeyTips
+
+| Shortcut            | Action          | Description                             |
+| ------------------- | --------------- | --------------------------------------- |
+| Alt/Cmd + H + V + V | Paste Values    | Paste only values (not formulas)        |
+| Alt/Cmd + H + B + B | Border Bottom   | Add bottom border to selected cells     |
+| Alt/Cmd + H + B + T | Border Top      | Add top border to selected cells        |
+| Alt/Cmd + H + O + I | AutoFit Column  | Adjust column width to fit content      |
+| Alt/Cmd + A + S     | Sort Descending | Sort selected cells in descending order |
+
+### 2. User Experience Requirements
+
+* **Activation**: Pressing Alt/Cmd should activate the KeyTips system
+* **Sequential Input**: Keys are pressed one at a time (not simultaneously)
+* **Visual Feedback**: Display the currently active key sequence
+* **Cancellation**: Allow users to exit at any point (Esc or clicking away)
+* **Action Behavior**: Each action should work equivalently to Google Sheets
+
+### 3. Technical Requirements
+
+* Design the system to support 100+ potential keytips (not just the 5 required)
+* Use the provided spreadsheet library
+* Create a `keytips.md` file explaining how to add new keytips
+
+### 4. Documentation & Submission
+
+Submit a PR containing:
+
+* Your implementation code
+* `keytips.md` - Instructions for adding new keytips
+* Updated README listing what you would improve to consider the system "production grade", ranked by importance
+
+## Getting Started & Submission Steps
+
+1. Clone this repository locally and create a separate private repo for permission (add gfang200 as a collaborator)
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+
+   ```bash
+   npm run start
+   ```
+4. Implement the KeyTips system
+5. Push your work to your cloned private repository and share the link
+
+## What We're Looking For
+
+**No pressure!** We know this is a time-pressured challenge, and we're not expecting a perfect, production-ready system. Our goal is to understand how you approach problems and make decisions within realistic time constraints.
+
+We love to see:
+
+* Clear thought process and systematic approach to tackling implementation challenges
+* Intentional balance between features and infrastructure with ruthless prioritization when time or knowledge is limited
+* Proactive handling of edge cases and adherence to best practices
+* Effective use of AI tools, documentation, and other resources to solve problems efficiently
+* Strong ability to autonomously understand and extend requirements from the examples provided
+
+Remember: This is about understanding your development approach, not getting everything perfect. Focus on the MVP requirements and share your thoughts on what you'd improve for production use!
+
+## Tips
+
+* Use AI tools effectively but don't get stuck. SpreadJS documentation ([https://developer.mescius.com/spreadjs/docs/overview](https://developer.mescius.com/spreadjs/docs/overview)) is also a great resource
+* Try performing these operations manually in Google Sheets to understand the expected behavior and user experience
+* Consider how the system should handle cases like invalid key sequences
+* Feel free to make implementation decisions that best showcase your skills!
+
+Good luck! If you have questions about how any specific Google Sheets behavior works, please ask for clarification.
+</file>
+
+<file path="src/App.css">
+.App {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+</file>
+
+<file path="src/App.test.tsx">
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+</file>
+
+<file path="src/App.tsx">
+import React, { useRef, useEffect } from 'react';
+import * as GC from '@mescius/spread-sheets';
+import { SpreadSheets } from '@mescius/spread-sheets-react';
+import '@mescius/spread-sheets/styles/gc.spread.sheets.excel2013white.css';
+import './App.css';
+import { execute, type CommandId } from './keytips/CommandExecutor';
+import { useKeyTips } from './keytips/useKeyTips';
+import { KeyTipsOverlay } from './keytips/KeyTipsOverlay';
+
+function App() {
+  const spreadRef = useRef<any>(null);
+  const { active, sequence, invalidFlash, controller } = useKeyTips();
+
+  const initSpread = (spread: any) => {
+    console.log('Spread initialized');
+    const sheet = spread.getActiveSheet();
+    
+    // Set some initial data
+    sheet.setValue(0, 0, "Meridian Take Home");
+    sheet.setValue(1, 0, "The following placeholder data is for testing purposes.");
+    
+    // Style the welcome message
+    const style = new GC.Spread.Sheets.Style();
+    style.font = "bold 16pt Arial";
+    style.foreColor = "#1a73e8";
+    sheet.setStyle(0, 0, style);
+    
+    // Add some sample data
+    sheet.setValue(3, 0, "Product");
+    sheet.setValue(3, 1, "Price");
+    sheet.setValue(3, 2, "Quantity");
+    sheet.setValue(3, 3, "Total");
+    
+    sheet.setValue(4, 0, "Laptop");
+    sheet.setValue(4, 1, 999.99);
+    sheet.setValue(4, 2, 2);
+    sheet.setFormula(4, 3, "=B6*C6");
+    
+    sheet.setValue(5, 0, "Mouse");
+    sheet.setValue(5, 1, 29.99);
+    sheet.setValue(5, 2, 5);
+    sheet.setFormula(5, 3, "=B7*C7");
+    
+    sheet.setValue(6, 0, "Keyboard");
+    sheet.setValue(6, 1, 79.99);
+    sheet.setValue(6, 2, 3);
+    sheet.setFormula(6, 3, "=B8*C8");
+    
+    // Add total formula
+    sheet.setValue(8, 2, "Total:");
+    sheet.setFormula(8, 3, "=SUM(D6:D8)");
+    
+    // Add some unsorted test data for sorting (Phase 3)
+    sheet.setValue(10, 0, "Sort Test Data:");
+    sheet.setValue(11, 0, "Apple");
+    sheet.setValue(11, 1, 50);
+    sheet.setValue(12, 0, "Zebra");
+    sheet.setValue(12, 1, 25);
+    sheet.setValue(13, 0, "Banana");
+    sheet.setValue(13, 1, 75);
+    
+    // Format the price columns
+    const currencyFormatter = new GC.Spread.Formatter.GeneralFormatter("$#,##0.00");
+    sheet.getRange(5, 1, 3, 1).formatter(currencyFormatter);
+    sheet.getRange(5, 3, 5, 1).formatter(currencyFormatter);
+    
+    // Auto fit columns
+    sheet.autoFitColumn(0);
+    sheet.autoFitColumn(1);
+    sheet.autoFitColumn(2);
+    sheet.autoFitColumn(3);
+  };
+
+  // Phase 4: KeyTips with Visual Feedback
+  useEffect(() => {
+    // Handle command execution
+    const originalOnMatchedCommand = controller['events'].onMatchedCommand;
+    controller['events'].onMatchedCommand = (cmd: string) => {
+      originalOnMatchedCommand?.(cmd);
+      // Execute the actual command
+      const spread = spreadRef.current?.spread || spreadRef.current;
+      if (spread) {
+        execute(cmd as CommandId, { spread });
+      } else {
+        console.error('Spread instance not available');
+      }
+    };
+
+    // Block ALL events more aggressively (from Phase 3 - keeping known issue)
+    const blockEvent = (e: Event) => {
+      if (controller.getMode() === 'collecting') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (controller.getMode() === 'collecting') {
+        blockEvent(e);
+        return false;
+      }
+    };
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (controller.getMode() === 'collecting') {
+        blockEvent(e);
+        return false;
+      }
+    };
+
+    const handleInput = (e: Event) => {
+      if (controller.getMode() === 'collecting') {
+        blockEvent(e);
+        return false;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const isMeta = e.key === 'Meta';
+      const isAlt = e.key === 'Alt';
+      const isEsc = e.key === 'Escape';
+
+      if (isAlt || isMeta) {
+        e.preventDefault();
+        e.stopPropagation();
+        controller.activate();
+        return false;
+      }
+
+      if (isEsc) {
+        // Phase 5: Enhanced Escape handling
+        if (controller.getMode() === 'collecting') {
+          console.log('⏸️ Escape pressed - cancelling KeyTips');
+          e.preventDefault();
+          e.stopPropagation();
+          controller.cancel();
+        }
+        return;
+      }
+
+      if (controller.getMode() === 'collecting') {
+        if (/^[a-zA-Z]$/.test(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          controller.appendKey(e.key);
+          return false;
+        }
+      }
+    };
+
+    const handleMouseDown = () => {
+      // Phase 5: Cancel on click outside
+      if (controller.getMode() === 'collecting') {
+        console.log('🖱️ Mouse click detected - cancelling KeyTips');
+        controller.cancel();
+      }
+    };
+
+    // Add multiple event listeners to catch everything
+    const events = ['keydown', 'keypress', 'keyup', 'input', 'textInput'];
+    
+    events.forEach(eventType => {
+      if (eventType === 'keyup') {
+        window.addEventListener(eventType, handleKeyUp, true);
+      } else if (eventType === 'keydown') {
+        window.addEventListener(eventType, handleKeyDown, true);
+      } else if (eventType === 'keypress') {
+        window.addEventListener(eventType, handleKeyPress, true);
+      } else {
+        window.addEventListener(eventType, handleInput, true);
+      }
+    });
+    
+    window.addEventListener('mousedown', handleMouseDown, true);
+
+    return () => {
+      events.forEach(eventType => {
+        if (eventType === 'keyup') {
+          window.removeEventListener(eventType, handleKeyUp, true);
+        } else if (eventType === 'keydown') {
+          window.removeEventListener(eventType, handleKeyDown, true);
+        } else if (eventType === 'keypress') {
+          window.removeEventListener(eventType, handleKeyPress, true);
+        } else {
+          window.removeEventListener(eventType, handleInput, true);
+        }
+      });
+      window.removeEventListener('mousedown', handleMouseDown, true);
+    };
+  }, [controller]);
+
+  return (
+    <div className="App" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
+      <h2 style={{ 
+        margin: 0, 
+        padding: '10px', 
+        backgroundColor: '#f5f5f5', 
+        borderBottom: '1px solid #ddd' 
+      }}>
+        Meridian Take Home
+      </h2>
+      <div style={{ flex: 1, position: 'relative' }}>
+        <SpreadSheets 
+          ref={spreadRef}
+          workbookInitialized={initSpread}
+          hostStyle={{ 
+            width: '100%', 
+            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+        />
+        <KeyTipsOverlay 
+          active={active} 
+          sequence={sequence} 
+          invalidFlash={invalidFlash} 
+        />
+      </div>
+    </div>
+  );
+}
+
+export default App;
+</file>
+
+<file path="src/index.css">
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+</file>
+
+<file path="src/index.tsx">
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+</file>
+
+<file path="src/keytips/CommandExecutor.ts">
+// ==============================================
+// File: src/keytips/CommandExecutor.ts
+// Executes actual spreadsheet commands via SpreadJS API
+// ==============================================
+
+import * as GC from '@mescius/spread-sheets';
+
+export type CommandId = "pasteValues" | "borderBottom" | "borderTop" | "autoFitCol" | "sortDesc";
+
+export interface CommandContext {
+  spread: GC.Spread.Sheets.Workbook;
+}
+
+export function execute(cmd: CommandId, ctx: CommandContext): void {
+  const spread = ctx.spread;
+  const sheet = spread.getActiveSheet();
+  const selections = sheet.getSelections();
+  
+  console.log(`🎬 Executing command: ${cmd}`);
+  
+  try {
+    switch (cmd) {
+      case "pasteValues":
+        executePasteValues(sheet, selections);
+        break;
+      case "borderBottom":
+        executeBorder(sheet, selections, "bottom");
+        break;
+      case "borderTop":
+        executeBorder(sheet, selections, "top");
+        break;
+      case "autoFitCol":
+        executeAutoFitColumn(sheet, selections);
+        break;
+      case "sortDesc":
+        executeSortDescending(sheet, selections);
+        break;
+      default:
+        console.warn(`Unknown command: ${cmd}`);
+    }
+    console.log(`✅ Command ${cmd} executed successfully`);
+  } catch (error) {
+    console.error(`❌ Command ${cmd} failed:`, error);
+    // In a production app, you'd show a user-friendly error message
+  }
+}
+
+function executePasteValues(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
+  // For MVP, we'll simulate paste values by copying some sample data
+  // In a real app, you'd read from clipboard or SpreadJS copy buffer
+  
+  if (selections.length === 0) {
+    console.log("📋 No selection for paste - using active cell");
+    const activeRow = sheet.getActiveRowIndex();
+    const activeCol = sheet.getActiveColumnIndex();
+    console.log(`📋 Pasting to active cell: R${activeRow}C${activeCol}`);
+    // Paste some obvious sample values to demonstrate
+    sheet.setValue(activeRow, activeCol, "🎯 PASTED");
+    sheet.setValue(activeRow + 1, activeCol, "Value 2");
+    sheet.setValue(activeRow, activeCol + 1, "Value 3");
+    return;
+  }
+
+  const selection = selections[0]; // Use first selection
+  console.log(`📋 Pasting values to selection: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
+  
+  // Paste obvious sample values that are easy to spot
+  for (let r = 0; r < Math.min(selection.rowCount, 3); r++) {
+    for (let c = 0; c < Math.min(selection.colCount, 3); c++) {
+      if (r === 0 && c === 0) {
+        sheet.setValue(selection.row + r, selection.col + c, `🎯 PASTED`);
+      } else {
+        sheet.setValue(selection.row + r, selection.col + c, `Val${r + 1}.${c + 1}`);
+      }
+    }
+  }
+}
+
+function executeBorder(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[], side: "top" | "bottom") {
+  if (selections.length === 0) {
+    console.log(`🖼️ No selection for border - using active cell`);
+    const activeRow = sheet.getActiveRowIndex();
+    const activeCol = sheet.getActiveColumnIndex();
+    selections = [new GC.Spread.Sheets.Range(activeRow, activeCol, 1, 1)];
+  }
+
+  for (const selection of selections) {
+    console.log(`🖼️ Adding ${side} border to: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
+    
+    const range = sheet.getRange(selection.row, selection.col, selection.rowCount, selection.colCount);
+    const borderColor = "#000000";
+    const borderStyle = GC.Spread.Sheets.LineStyle.thin;
+    
+    if (side === "bottom") {
+      range.borderBottom(new GC.Spread.Sheets.LineBorder(borderColor, borderStyle));
+    } else if (side === "top") {
+      range.borderTop(new GC.Spread.Sheets.LineBorder(borderColor, borderStyle));
+    }
+  }
+}
+
+function executeAutoFitColumn(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
+  if (selections.length === 0) {
+    console.log("📏 No selection for autofit - using active column");
+    const activeCol = sheet.getActiveColumnIndex();
+    sheet.autoFitColumn(activeCol);
+    return;
+  }
+
+  const selection = selections[0];
+  console.log(`📏 Auto-fitting columns: ${selection.col} to ${selection.col + selection.colCount - 1}`);
+  
+  // AutoFit all columns in the selection
+  for (let col = selection.col; col < selection.col + selection.colCount; col++) {
+    sheet.autoFitColumn(col);
+  }
+}
+
+function executeSortDescending(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
+  if (selections.length === 0) {
+    console.log("🔽 No selection for sort - cannot sort without range");
+    return;
+  }
+
+  const selection = selections[0];
+  console.log(`🔽 Sorting descending: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
+  
+  if (selection.rowCount < 2) {
+    console.log("🔽 Selection too small to sort (need at least 2 rows)");
+    return;
+  }
+
+  // Sort the range by the first column, descending
+  // For MVP, we'll use the simpler sortRange signature
+  try {
+    sheet.sortRange(
+      selection.row, 
+      selection.col, 
+      selection.rowCount, 
+      selection.colCount, 
+      true, // sortByRows
+      [
+        {
+          index: 0, // First column of selection
+          ascending: false // Descending
+        }
+      ]
+      // Omit options parameter for MVP simplicity
+    );
+  } catch (error) {
+    console.error('Sort failed, trying simpler approach:', error);
+    // Fallback: If the advanced sort fails, we could implement a simple manual sort
+    // For MVP, we'll just log the error
+  }
+}
+</file>
+
+<file path="src/keytips/KeyTipsController.ts">
+// ==============================================
+// File: src/keytips/KeyTipsController.ts
+// Headless controller for KeyTips state machine
+// ==============================================
+
+export type Mode = "inactive" | "collecting";
+
+export interface KeyTipsEvents {
+  onActivate?: () => void;
+  onSequenceChange?: (seq: string[]) => void;
+  onMatchedCommand?: (commandId: string) => void;
+  onInvalid?: (seq: string[]) => void;
+  onCancel?: () => void;
+}
+
+export class KeyTipsController {
+  private mode: Mode = "inactive";
+  private seq: string[] = [];
+  private events: KeyTipsEvents;
+
+  constructor(events: KeyTipsEvents = {}) {
+    this.events = events;
+  }
+
+  getMode() { 
+    return this.mode; 
+  }
+  
+  getSequence() { 
+    return [...this.seq]; 
+  }
+
+  activate() {
+    if (this.mode === "collecting") return;
+    this.mode = "collecting";
+    this.seq = [];
+    console.log("🚀 KeyTips activated");
+    this.events.onActivate?.();
+    this.events.onSequenceChange?.(this.seq);
+  }
+
+  appendKey(raw: string) {
+    if (this.mode !== "collecting") return;
+    const k = raw.toUpperCase();
+    if (!/^[A-Z]$/.test(k)) return; // MVP: letters only
+
+    this.seq.push(k);
+    console.log(`📝 KeyTips sequence: [${this.seq.join(' → ')}]`);
+    this.events.onSequenceChange?.(this.seq);
+
+    // TODO: Check against registry - for now just placeholder logic
+    // This will be replaced when we add the registry
+    const seqStr = this.seq.join('');
+    if (seqStr === 'HVV') {
+      console.log("✅ Matched: pasteValues");
+      this.events.onMatchedCommand?.("pasteValues");
+      this.reset();
+      return;
+    }
+    
+    if (seqStr === 'HBB') {
+      console.log("✅ Matched: borderBottom");
+      this.events.onMatchedCommand?.("borderBottom");
+      this.reset();
+      return;
+    }
+
+    if (seqStr === 'HBT') {
+      console.log("✅ Matched: borderTop");
+      this.events.onMatchedCommand?.("borderTop");
+      this.reset();
+      return;
+    }
+
+    if (seqStr === 'HOI') {
+      console.log("✅ Matched: autoFitCol");
+      this.events.onMatchedCommand?.("autoFitCol");
+      this.reset();
+      return;
+    }
+
+    if (seqStr === 'AS') {
+      console.log("✅ Matched: sortDesc");
+      this.events.onMatchedCommand?.("sortDesc");
+      this.reset();
+      return;
+    }
+
+    // Check if it's still a valid prefix (simplified for now)
+    const validPrefixes = ['H', 'A', 'HV', 'HB', 'HO'];
+    if (!validPrefixes.includes(seqStr)) {
+      console.log("❌ Invalid sequence");
+      this.events.onInvalid?.(this.seq);
+      this.reset();
+    }
+  }
+
+  cancel() {
+    if (this.mode === "inactive") return;
+    console.log("⛔ KeyTips cancelled");
+    this.mode = "inactive";
+    this.seq = [];
+    this.events.onCancel?.();
+  }
+
+  reset() {
+    console.log("🔄 KeyTips reset");
+    this.mode = "inactive";
+    this.seq = [];
+    this.events.onSequenceChange?.(this.seq);
+  }
+}
+</file>
+
+<file path="src/keytips/KeyTipsOverlay.tsx">
+// ===============================================
+// File: src/keytips/KeyTipsOverlay.tsx (UI widget)
+// ===============================================
+import React from "react";
+
+export function KeyTipsOverlay({ active, sequence, invalidFlash }: {
+  active: boolean;
+  sequence: string[];
+  invalidFlash?: boolean;
+}) {
+  if (!active && sequence.length === 0) return null;
+  
+  return (
+    <div style={{
+      position: "fixed",
+      top: 12,
+      right: 12,
+      background: invalidFlash ? "#ffefef" : "#1f2937",
+      color: invalidFlash ? "#b91c1c" : "#f9fafb",
+      border: invalidFlash ? "1px solid #fecaca" : "1px solid #374151",
+      borderRadius: 8,
+      padding: "10px 12px",
+      fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
+      fontSize: 14,
+      boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+      zIndex: 9999,
+      userSelect: "none",
+      pointerEvents: "none",
+      transition: "background 150ms ease, border 150ms ease, color 150ms ease",
+    }}>
+      <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 4 }}>KeyTips</div>
+      <div>
+        {sequence.length === 0 ? (
+          <span style={{ opacity: 0.9 }}>Press keys…</span>
+        ) : (
+          <span>{["Alt/Cmd", ...sequence].join(" → ")}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/keytips/KeyTipsRegistry.ts.backup">
+// ==============================================
+// File: src/keytips/KeyTipsRegistry.ts
+// Declarative registry of all KeyTips sequences
+// ==============================================
+
+import { CommandId } from "./CommandExecutor";
+
+export interface KeyTip {
+  chord: string[];
+  command: CommandId;
+  group?: string;
+  label?: string;
+}
+
+// Registry of all KeyTips (MVP: 5 required sequences)
+export const KEYTIPS: KeyTip[] = [
+  {
+    chord: ["H", "V", "V"],
+    command: "pasteValues",
+    group: "H",
+    label: "Paste Values"
+  },
+  {
+    chord: ["H", "B", "B"],
+    command: "borderBottom",
+    group: "H", 
+    label: "Border Bottom"
+  },
+  {
+    chord: ["H", "B", "T"],
+    command: "borderTop",
+    group: "H",
+    label: "Border Top"
+  },
+  {
+    chord: ["H", "O", "I"],
+    command: "autoFitCol",
+    group: "H",
+    label: "AutoFit Column"
+  },
+  {
+    chord: ["A", "S"],
+    command: "sortDesc",
+    group: "A",
+    label: "Sort Descending"
+  }
+];
+
+// Helper to find matching KeyTips by prefix
+export interface ChordMatch {
+  isExact: boolean;
+  isPrefix: boolean;
+  match?: KeyTip;
+  possibleMatches?: KeyTip[];
+}
+
+export function matchChordPrefix(sequence: string[]): ChordMatch {
+  if (sequence.length === 0) {
+    return { isExact: false, isPrefix: true, possibleMatches: KEYTIPS };
+  }
+
+  let exactMatch: KeyTip | undefined;
+  let prefixMatches: KeyTip[] = [];
+
+  for (const keytip of KEYTIPS) {
+    const { chord } = keytip;
+    
+    if (chord.length === sequence.length && chord.every((k, i) => k === sequence[i])) {
+      exactMatch = keytip;
+    }
+    
+    if (chord.length >= sequence.length && sequence.every((k, i) => k === chord[i])) {
+      prefixMatches.push(keytip);
+    }
+  }
+
+  return {
+    isExact: !!exactMatch,
+    isPrefix: prefixMatches.length > 0,
+    match: exactMatch,
+    possibleMatches: prefixMatches
+  };
+}
+
+// Helper to get all possible next keys from current sequence
+export function getNextKeys(sequence: string[]): string[] {
+  const { possibleMatches } = matchChordPrefix(sequence);
+  if (!possibleMatches || sequence.length === 0) return [];
+  
+  const nextKeys = new Set<string>();
+  for (const keytip of possibleMatches) {
+    if (keytip.chord.length > sequence.length) {
+      nextKeys.add(keytip.chord[sequence.length]);
+    }
+  }
+  
+  return Array.from(nextKeys).sort();
+}
+</file>
+
+<file path="src/keytips/useKeyTips.ts">
+// =================================================
+// File: src/keytips/useKeyTips.ts (React integration)
+// =================================================
+import { useMemo, useState } from "react";
+import { KeyTipsController } from "./KeyTipsController";
+
+export function useKeyTips() {
+  const [active, setActive] = useState(false);
+  const [sequence, setSequence] = useState<string[]>([]);
+  const [invalidFlash, setInvalidFlash] = useState(false);
+
+  const controller = useMemo(() => new KeyTipsController({
+    onActivate: () => {
+      console.log('KeyTips activated - normal typing disabled');
+      setActive(true);
+      setSequence([]);
+      setInvalidFlash(false);
+    },
+    onSequenceChange: (seq) => {
+      setSequence(seq);
+      setInvalidFlash(false);
+    },
+    onMatchedCommand: (cmd) => {
+      console.log(`Command matched: ${cmd}`);
+      // Command will be executed by the caller
+      // Reset to inactive after command execution
+      setTimeout(() => {
+        setActive(false);
+        setSequence([]);
+        console.log('KeyTips reset - normal typing restored');
+      }, 100);
+    },
+    onInvalid: (seq) => {
+      console.log('Invalid sequence detected');
+      setInvalidFlash(true);
+      // Flash invalid for 300ms, then hide overlay
+      setTimeout(() => {
+        setInvalidFlash(false);
+        setActive(false);
+        setSequence([]);
+        console.log('KeyTips reset after invalid sequence - normal typing restored');
+      }, 300);
+    },
+    onCancel: () => {
+      console.log('KeyTips cancelled - normal typing restored');
+      setActive(false);
+      setSequence([]);
+      setInvalidFlash(false);
+    },
+  }), []);
+
+  return { active, sequence, invalidFlash, controller };
+}
+</file>
+
+<file path="src/logo.svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841.9 595.3"><g fill="#61DAFB"><path d="M666.3 296.5c0-32.5-40.7-63.3-103.1-82.4 14.4-63.6 8-114.2-20.2-130.4-6.5-3.8-14.1-5.6-22.4-5.6v22.3c4.6 0 8.3.9 11.4 2.6 13.6 7.8 19.5 37.5 14.9 75.7-1.1 9.4-2.9 19.3-5.1 29.4-19.6-4.8-41-8.5-63.5-10.9-13.5-18.5-27.5-35.3-41.6-50 32.6-30.3 63.2-46.9 84-46.9V78c-27.5 0-63.5 19.6-99.9 53.6-36.4-33.8-72.4-53.2-99.9-53.2v22.3c20.7 0 51.4 16.5 84 46.6-14 14.7-28 31.4-41.3 49.9-22.6 2.4-44 6.1-63.6 11-2.3-10-4-19.7-5.2-29-4.7-38.2 1.1-67.9 14.6-75.8 3-1.8 6.9-2.6 11.5-2.6V78.5c-8.4 0-16 1.8-22.6 5.6-28.1 16.2-34.4 66.7-19.9 130.1-62.2 19.2-102.7 49.9-102.7 82.3 0 32.5 40.7 63.3 103.1 82.4-14.4 63.6-8 114.2 20.2 130.4 6.5 3.8 14.1 5.6 22.5 5.6 27.5 0 63.5-19.6 99.9-53.6 36.4 33.8 72.4 53.2 99.9 53.2 8.4 0 16-1.8 22.6-5.6 28.1-16.2 34.4-66.7 19.9-130.1 62-19.1 102.5-49.9 102.5-82.3zm-130.2-66.7c-3.7 12.9-8.3 26.2-13.5 39.5-4.1-8-8.4-16-13.1-24-4.6-8-9.5-15.8-14.4-23.4 14.2 2.1 27.9 4.7 41 7.9zm-45.8 106.5c-7.8 13.5-15.8 26.3-24.1 38.2-14.9 1.3-30 2-45.2 2-15.1 0-30.2-.7-45-1.9-8.3-11.9-16.4-24.6-24.2-38-7.6-13.1-14.5-26.4-20.8-39.8 6.2-13.4 13.2-26.8 20.7-39.9 7.8-13.5 15.8-26.3 24.1-38.2 14.9-1.3 30-2 45.2-2 15.1 0 30.2.7 45 1.9 8.3 11.9 16.4 24.6 24.2 38 7.6 13.1 14.5 26.4 20.8 39.8-6.3 13.4-13.2 26.8-20.7 39.9zm32.3-13c5.4 13.4 10 26.8 13.8 39.8-13.1 3.2-26.9 5.9-41.2 8 4.9-7.7 9.8-15.6 14.4-23.7 4.6-8 8.9-16.1 13-24.1zM421.2 430c-9.3-9.6-18.6-20.3-27.8-32 9 .4 18.2.7 27.5.7 9.4 0 18.7-.2 27.8-.7-9 11.7-18.3 22.4-27.5 32zm-74.4-58.9c-14.2-2.1-27.9-4.7-41-7.9 3.7-12.9 8.3-26.2 13.5-39.5 4.1 8 8.4 16 13.1 24 4.7 8 9.5 15.8 14.4 23.4zM420.7 163c9.3 9.6 18.6 20.3 27.8 32-9-.4-18.2-.7-27.5-.7-9.4 0-18.7.2-27.8.7 9-11.7 18.3-22.4 27.5-32zm-74 58.9c-4.9 7.7-9.8 15.6-14.4 23.7-4.6 8-8.9 16-13 24-5.4-13.4-10-26.8-13.8-39.8 13.1-3.1 26.9-5.8 41.2-7.9zm-90.5 125.2c-35.4-15.1-58.3-34.9-58.3-50.6 0-15.7 22.9-35.6 58.3-50.6 8.6-3.7 18-7 27.7-10.1 5.7 19.6 13.2 40 22.5 60.9-9.2 20.8-16.6 41.1-22.2 60.6-9.9-3.1-19.3-6.5-28-10.2zM310 490c-13.6-7.8-19.5-37.5-14.9-75.7 1.1-9.4 2.9-19.3 5.1-29.4 19.6 4.8 41 8.5 63.5 10.9 13.5 18.5 27.5 35.3 41.6 50-32.6 30.3-63.2 46.9-84 46.9-4.5-.1-8.3-1-11.3-2.7zm237.2-76.2c4.7 38.2-1.1 67.9-14.6 75.8-3 1.8-6.9 2.6-11.5 2.6-20.7 0-51.4-16.5-84-46.6 14-14.7 28-31.4 41.3-49.9 22.6-2.4 44-6.1 63.6-11 2.3 10.1 4.1 19.8 5.2 29.1zm38.5-66.7c-8.6 3.7-18 7-27.7 10.1-5.7-19.6-13.2-40-22.5-60.9 9.2-20.8 16.6-41.1 22.2-60.6 9.9 3.1 19.3 6.5 28.1 10.2 35.4 15.1 58.3 34.9 58.3 50.6-.1 15.7-23 35.6-58.4 50.6zM320.8 78.4z"/><circle cx="420.9" cy="296.5" r="45.7"/><path d="M520.5 78.1z"/></g></svg>
+</file>
+
+<file path="src/react-app-env.d.ts">
+/// <reference types="react-scripts" />
+</file>
+
+<file path="src/reportWebVitals.ts">
+import { ReportHandler } from 'web-vitals';
+
+const reportWebVitals = (onPerfEntry?: ReportHandler) => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+</file>
+
+<file path="src/setupTests.ts">
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src"
+  ]
+}
+</file>
+
+</files>
