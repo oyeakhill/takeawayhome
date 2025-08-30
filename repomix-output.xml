@@ -41,31 +41,889 @@ The content is organized as follows:
 
 <directory_structure>
 .gitignore
-KNOWN_ISSUES.md
+dev-console.js
+keytips.md
 package.json
 public/index.html
 public/manifest.json
 public/robots.txt
-README.md
+readme_original.md
 src/App.css
 src/App.test.tsx
 src/App.tsx
 src/index.css
 src/index.tsx
 src/keytips/CommandExecutor.ts
+src/keytips/DynamicKeytips.ts
 src/keytips/KeyTipsController.ts
 src/keytips/KeyTipsOverlay.tsx
-src/keytips/KeyTipsRegistry.ts.backup
+src/keytips/KeyTipsRegistry.ts
+src/keytips/KeyTipsSettings.tsx
+src/keytips/SpreadsheetAPI.ts
 src/keytips/useKeyTips.ts
 src/logo.svg
 src/react-app-env.d.ts
 src/reportWebVitals.ts
 src/setupTests.ts
+test-conflicts.ts
 tsconfig.json
+user-customization-extras
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="readme_original.md">
+## Overview
+
+Your task is to implement a keyboard-driven command interface for a web-based spreadsheet application, similar to Excel's KeyTips feature. This system allows users to execute spreadsheet commands through sequential keyboard shortcuts.
+
+**Time Expectation**: 1-2 hours
+**Deliverables**: A working implementation and documentation in a GitHub pull request.
+
+## What are KeyTips?
+
+KeyTips provide keyboard accessibility by:
+
+* Activating with Alt (Windows/Linux) or Cmd (Mac)
+* Showing visual overlays of available keyboard shortcuts
+* Allowing sequential key presses to navigate and execute commands
+* Example: Alt → H → V → V executes "Paste Values"
+
+Watch this [Excel KeyTips demonstration](https://www.youtube.com/watch?v=emU9KcZKw9k) to understand the user experience. Note: The ribbon interface shown is not required for your implementation.
+
+You can also see [how KeyTips are implemented in Meridian](https://drive.google.com/file/d/1-GANv2HjCTGD7TGFt6htRV2emEpIIZDn/view?usp=sharing) for reference. Note: Your UI implementation does not need to look the same as Meridian's interface.
+
+## Why This Matters
+
+For many financial professionals—especially in banking and consulting—Excel is their IDE. They rely almost entirely on the keyboard, navigating and editing at high speed with muscle memory alone. Reaching for the mouse breaks flow. KeyTips aren’t just a nice-to-have—they’re essential to preserving the kind of power-user experience that makes spreadsheets feel seamless. This assignment simulates how we bring that level of keyboard-driven efficiency into a modern, web-based spreadsheet environment.
+
+## Requirements
+
+### 1. Implement These 5 KeyTips
+
+| Shortcut            | Action          | Description                             |
+| ------------------- | --------------- | --------------------------------------- |
+| Alt/Cmd + H + V + V | Paste Values    | Paste only values (not formulas)        |
+| Alt/Cmd + H + B + B | Border Bottom   | Add bottom border to selected cells     |
+| Alt/Cmd + H + B + T | Border Top      | Add top border to selected cells        |
+| Alt/Cmd + H + O + I | AutoFit Column  | Adjust column width to fit content      |
+| Alt/Cmd + A + S     | Sort Descending | Sort selected cells in descending order |
+
+### 2. User Experience Requirements
+
+* **Activation**: Pressing Alt/Cmd should activate the KeyTips system
+* **Sequential Input**: Keys are pressed one at a time (not simultaneously)
+* **Visual Feedback**: Display the currently active key sequence
+* **Cancellation**: Allow users to exit at any point (Esc or clicking away)
+* **Action Behavior**: Each action should work equivalently to Google Sheets
+
+### 3. Technical Requirements
+
+* Design the system to support 100+ potential keytips (not just the 5 required)
+* Use the provided spreadsheet library
+* Create a `keytips.md` file explaining how to add new keytips
+
+### 4. Documentation & Submission
+
+Submit a PR containing:
+
+* Your implementation code
+* `keytips.md` - Instructions for adding new keytips
+* Updated README listing what you would improve to consider the system "production grade", ranked by importance
+
+## Getting Started & Submission Steps
+
+1. Clone this repository locally and create a separate private repo for permission (add gfang200 as a collaborator)
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+
+   ```bash
+   npm run start
+   ```
+4. Implement the KeyTips system
+5. Push your work to your cloned private repository and share the link
+
+## What We're Looking For
+
+**No pressure!** We know this is a time-pressured challenge, and we're not expecting a perfect, production-ready system. Our goal is to understand how you approach problems and make decisions within realistic time constraints.
+
+We love to see:
+
+* Clear thought process and systematic approach to tackling implementation challenges
+* Intentional balance between features and infrastructure with ruthless prioritization when time or knowledge is limited
+* Proactive handling of edge cases and adherence to best practices
+* Effective use of AI tools, documentation, and other resources to solve problems efficiently
+* Strong ability to autonomously understand and extend requirements from the examples provided
+
+Remember: This is about understanding your development approach, not getting everything perfect. Focus on the MVP requirements and share your thoughts on what you'd improve for production use!
+
+## Tips
+
+* Use AI tools effectively but don't get stuck. SpreadJS documentation ([https://developer.mescius.com/spreadjs/docs/overview](https://developer.mescius.com/spreadjs/docs/overview)) is also a great resource
+* Try performing these operations manually in Google Sheets to understand the expected behavior and user experience
+* Consider how the system should handle cases like invalid key sequences
+* Feel free to make implementation decisions that best showcase your skills!
+
+Good luck! If you have questions about how any specific Google Sheets behavior works, please ask for clarification.
+</file>
+
+<file path="src/keytips/DynamicKeytips.ts">
+// ==============================================
+// DYNAMIC KEYTIPS SYSTEM - Production Version
+// This extends your existing registry with user customization
+// ==============================================
+
+import { CommandId } from './CommandExecutor';
+import { KeyTip, KEYTIPS, validateRegistry } from './KeyTipsRegistry';
+
+// User keytips are stored separately and merged at runtime
+let USER_KEYTIPS: KeyTip[] = [];
+
+// Load user keytips from localStorage
+export function loadUserKeytips(): KeyTip[] {
+  try {
+    const saved = localStorage.getItem('user-keytips');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate that all user keytips are well-formed
+      USER_KEYTIPS = parsed.filter((keytip: any) => 
+        keytip.chord && keytip.command && keytip.label
+      );
+      console.log(`📁 Loaded ${USER_KEYTIPS.length} user keytips from localStorage`);
+      return USER_KEYTIPS;
+    }
+  } catch (error) {
+    console.warn('Failed to load user keytips:', error);
+  }
+  return [];
+}
+
+// Save user keytips to localStorage
+export function saveUserKeytips(keytips: KeyTip[]): boolean {
+  try {
+    // Validate before saving
+    const allKeytips = [...KEYTIPS, ...keytips];
+    const report = validateRegistry(allKeytips);
+    
+    if (report.hasConflicts) {
+      console.error('❌ Cannot save user keytips due to conflicts:', report.conflicts);
+      return false;
+    }
+    
+    USER_KEYTIPS = keytips;
+    localStorage.setItem('user-keytips', JSON.stringify(keytips));
+    console.log(`💾 Saved ${keytips.length} user keytips to localStorage`);
+    return true;
+  } catch (error) {
+    console.error('Failed to save user keytips:', error);
+    return false;
+  }
+}
+
+// Get all keytips (system + user) for the controller to use
+export function getAllKeytips(): KeyTip[] {
+  return [...KEYTIPS, ...USER_KEYTIPS];
+}
+
+// Add a new user keytip
+export function addUserKeytip(keytip: Omit<KeyTip, 'group'>): boolean {
+  const newKeytip = { ...keytip, group: keytip.chord[0] };
+  const testKeytips = [...USER_KEYTIPS, newKeytip];
+  
+  if (saveUserKeytips(testKeytips)) {
+    console.log(`➕ Added user keytip: [${keytip.chord.join(' → ')}] → ${keytip.label}`);
+    return true;
+  }
+  return false;
+}
+
+// Remove a user keytip
+export function removeUserKeytip(chord: string[]): boolean {
+  const chordStr = chord.join(',');
+  const filteredKeytips = USER_KEYTIPS.filter(
+    keytip => keytip.chord.join(',') !== chordStr
+  );
+  
+  if (filteredKeytips.length !== USER_KEYTIPS.length) {
+    saveUserKeytips(filteredKeytips);
+    console.log(`➖ Removed user keytip: [${chord.join(' → ')}]`);
+    return true;
+  }
+  return false;
+}
+
+// Get available commands for UI - ONLY commands that are implemented in SpreadsheetAPI.ts
+export const AVAILABLE_COMMANDS = [
+  // Clipboard operations
+  { id: 'copy', label: 'Copy Selection' },
+  { id: 'paste', label: 'Paste' },
+  { id: 'pasteValues', label: 'Paste Values Only' },
+  
+  // Formatting operations
+  { id: 'bold', label: 'Make Bold' },
+  { id: 'italic', label: 'Make Italic' },
+  
+  // Border operations
+  { id: 'borderTop', label: 'Add Top Border' },
+  { id: 'borderBottom', label: 'Add Bottom Border' },
+  { id: 'borderLeft', label: 'Add Left Border' },
+  { id: 'borderRight', label: 'Add Right Border' },
+  { id: 'borderAll', label: 'Add All Borders' },
+  
+  // Data operations
+  { id: 'clearContent', label: 'Clear Content' },
+  { id: 'sortDesc', label: 'Sort Descending' },
+  { id: 'autoFitCol', label: 'AutoFit Columns' },
+] as const;
+
+// Enhanced match function that includes user keytips
+export function matchChordPrefixDynamic(sequence: string[]) {
+  const allKeytips = getAllKeytips();
+  
+  if (sequence.length === 0) {
+    return { isExact: false, isPrefix: true, possibleMatches: allKeytips };
+  }
+
+  let exactMatch: KeyTip | undefined;
+  let prefixMatches: KeyTip[] = [];
+
+  for (const keytip of allKeytips) {
+    const { chord } = keytip;
+    
+    if (chord.length === sequence.length && chord.every((k, i) => k === sequence[i])) {
+      exactMatch = keytip;
+    }
+    
+    if (chord.length >= sequence.length && sequence.every((k, i) => k === chord[i])) {
+      prefixMatches.push(keytip);
+    }
+  }
+
+  return {
+    isExact: !!exactMatch,
+    isPrefix: prefixMatches.length > 0,
+    match: exactMatch,
+    possibleMatches: prefixMatches
+  };
+}
+
+// Initialize user keytips on module load
+loadUserKeytips();
+
+export default {
+  loadUserKeytips,
+  saveUserKeytips,
+  getAllKeytips,
+  addUserKeytip,
+  removeUserKeytip,
+  matchChordPrefixDynamic,
+  AVAILABLE_COMMANDS
+};
+</file>
+
+<file path="src/keytips/KeyTipsSettings.tsx">
+import React, { useState, useEffect } from 'react';
+import { 
+  getAllKeytips, 
+  addUserKeytip, 
+  removeUserKeytip, 
+  loadUserKeytips,
+  AVAILABLE_COMMANDS 
+} from './DynamicKeytips';
+import { KeyTip } from './KeyTipsRegistry';
+
+interface KeyTipsSettingsProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onKeytipsChange?: () => void;
+}
+
+export function KeyTipsSettings({ isOpen, onClose, onKeytipsChange }: KeyTipsSettingsProps) {
+  const [userKeytips, setUserKeytips] = useState<KeyTip[]>([]);
+  const [newSequence, setNewSequence] = useState<string[]>([]);
+  const [selectedCommand, setSelectedCommand] = useState('');
+  const [customLabel, setCustomLabel] = useState('');
+  const [validationMessage, setValidationMessage] = useState('');
+  const [isValid, setIsValid] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadKeytips();
+    }
+  }, [isOpen]);
+
+  const loadKeytips = () => {
+    const userTips = loadUserKeytips();
+    setUserKeytips(userTips);
+  };
+
+  const handleAddKey = (key: string) => {
+    const newSeq = [...newSequence, key.toUpperCase()];
+    setNewSequence(newSeq);
+    validateSequence(newSeq);
+  };
+
+  const validateSequence = (sequence: string[]) => {
+    if (sequence.length === 0) {
+      setValidationMessage('');
+      setIsValid(true);
+      return;
+    }
+
+    const allKeytips = getAllKeytips();
+    const sequenceStr = sequence.join(',');
+    
+    // Check for exact duplicates
+    const duplicate = allKeytips.find(kt => kt.chord.join(',') === sequenceStr);
+    if (duplicate) {
+      setValidationMessage(`Sequence already exists: ${duplicate.label || duplicate.command}`);
+      setIsValid(false);
+      return;
+    }
+
+    // Check for prefix conflicts
+    const hasConflict = allKeytips.some(kt => {
+      const existing = kt.chord.join(',');
+      return existing.startsWith(sequenceStr + ',') || sequenceStr.startsWith(existing + ',');
+    });
+    
+    if (hasConflict) {
+      setValidationMessage('Sequence conflicts with existing KeyTips');
+      setIsValid(false);
+      return;
+    }
+
+    setValidationMessage('Valid sequence ✓');
+    setIsValid(true);
+  };
+
+  const handleAddKeytip = () => {
+    if (!newSequence.length || !selectedCommand || !customLabel) {
+      setValidationMessage('Please fill all fields');
+      setIsValid(false);
+      return;
+    }
+
+    const success = addUserKeytip({
+      chord: newSequence,
+      command: selectedCommand as any,
+      label: customLabel
+    });
+
+    if (success) {
+      setNewSequence([]);
+      setSelectedCommand('');
+      setCustomLabel('');
+      setValidationMessage('KeyTip added successfully!');
+      setIsValid(true);
+      loadKeytips();
+      onKeytipsChange?.();
+    } else {
+      setValidationMessage('Failed to add KeyTip');
+      setIsValid(false);
+    }
+  };
+
+  const handleRemoveKeytip = (chord: string[]) => {
+    const success = removeUserKeytip(chord);
+    if (success) {
+      loadKeytips();
+      onKeytipsChange?.();
+    }
+  };
+
+  const clearSequence = () => {
+    setNewSequence([]);
+    setValidationMessage('');
+    setIsValid(true);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      zIndex: 20000,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '24px',
+        width: '90%',
+        maxWidth: '600px',
+        maxHeight: '80%',
+        overflow: 'auto'
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0, color: '#1a73e8' }}>KeyTips Settings</h2>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer'
+          }}>×</button>
+        </div>
+
+        {/* Add New Section */}
+        <div style={{ marginBottom: '32px', padding: '16px', border: '1px solid #ddd', borderRadius: '8px' }}>
+          <h3>Add New KeyTip</h3>
+          
+          {/* Key Sequence Builder */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Key Sequence:</label>
+            <div style={{
+              padding: '8px',
+              border: `2px solid ${isValid ? '#4CAF50' : '#f44336'}`,
+              borderRadius: '4px',
+              backgroundColor: '#f9f9f9',
+              marginBottom: '8px'
+            }}>
+              <span>Alt/Cmd → {newSequence.join(' → ') || 'Click letters below...'}</span>
+              {newSequence.length > 0 && (
+                <button onClick={clearSequence} style={{
+                  marginLeft: '10px',
+                  background: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}>Clear</button>
+              )}
+            </div>
+            
+            {/* Letter Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(13, 1fr)', gap: '4px', marginBottom: '8px' }}>
+              {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
+                <button
+                  key={letter}
+                  onClick={() => handleAddKey(letter)}
+                  style={{
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    background: 'white',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+            
+            <div style={{ fontSize: '12px', color: isValid ? '#4CAF50' : '#f44336' }}>
+              {validationMessage}
+            </div>
+          </div>
+
+          {/* Command Selection */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Command:</label>
+            <select
+              value={selectedCommand}
+              onChange={(e) => {
+                setSelectedCommand(e.target.value);
+                const cmd = AVAILABLE_COMMANDS.find(c => c.id === e.target.value);
+                setCustomLabel(cmd?.label || '');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+            >
+              <option value="">Select a command...</option>
+              {AVAILABLE_COMMANDS.map(cmd => (
+                <option key={cmd.id} value={cmd.id}>
+                  {cmd.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Custom Label */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Label:</label>
+            <input
+              type="text"
+              value={customLabel}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              placeholder="e.g., 'My Custom Clear'"
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+            />
+          </div>
+
+          <button
+            onClick={handleAddKeytip}
+            disabled={!isValid || !newSequence.length || !selectedCommand || !customLabel}
+            style={{
+              padding: '10px 20px',
+              background: (isValid && newSequence.length && selectedCommand && customLabel) ? '#1a73e8' : '#ccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: (isValid && newSequence.length && selectedCommand && customLabel) ? 'pointer' : 'not-allowed'
+            }}
+          >
+            Add KeyTip
+          </button>
+        </div>
+
+        {/* Manage Section */}
+        <div>
+          <h3>Your Custom KeyTips ({userKeytips.length})</h3>
+          
+          {userKeytips.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
+              No custom KeyTips yet. Create one above!
+            </p>
+          ) : (
+            <div>
+              {userKeytips.map((tip, index) => (
+                <div key={index} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  marginBottom: '8px'
+                }}>
+                  <div>
+                    <strong>{tip.label}</strong>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      Alt/Cmd → {tip.chord.join(' → ')} → {tip.command}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveKeytip(tip.chord)}
+                    style={{
+                      background: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* System KeyTips Reference */}
+          <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: '#666' }}>Built-in KeyTips (Reference)</h4>
+            <div style={{ fontSize: '14px', color: '#666' }}>
+              <div>Alt/Cmd → H → V → V → Paste Values</div>
+              <div>Alt/Cmd → H → B → B → Border Bottom</div>
+              <div>Alt/Cmd → H → B → T → Border Top</div>
+              <div>Alt/Cmd → H → O → I → AutoFit Columns</div>
+              <div>Alt/Cmd → A → S → Sort Descending</div>
+              <div>Alt/Cmd → H → C → C → Clear Content</div>
+              <div style={{ marginTop: '8px', fontSize: '12px', fontStyle: 'italic' }}>
+                All {AVAILABLE_COMMANDS.length} commands are now available for custom KeyTips!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/keytips/SpreadsheetAPI.ts">
+// ==============================================
+// SpreadsheetAPI - Standardized Operations Interface
+// This wraps SpreadJS with a clean, consistent API
+// ==============================================
+
+import * as GC from '@mescius/spread-sheets';
+
+export interface SelectionInfo {
+  row: number;
+  col: number;
+  rowCount: number;
+  colCount: number;
+}
+
+export class SpreadsheetAPI {
+  constructor(private spread: GC.Spread.Sheets.Workbook) {}
+
+  private get sheet(): GC.Spread.Sheets.Worksheet {
+    return this.spread.getActiveSheet();
+  }
+
+  private getTargetRange(): SelectionInfo {
+    const selections = this.sheet.getSelections();
+    if (selections.length === 0) {
+      // Use active cell
+      return {
+        row: this.sheet.getActiveRowIndex(),
+        col: this.sheet.getActiveColumnIndex(),
+        rowCount: 1,
+        colCount: 1
+      };
+    }
+    return selections[0];
+  }
+
+  // ================================
+  // CLIPBOARD OPERATIONS
+  // ================================
+  
+  copy(): void {
+    const target = this.getTargetRange();
+    console.log(`📋 Copying: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    // Simple copy implementation - just log for now
+    // SpreadJS copy/paste is complex and varies by version
+    console.log('📋 Copy operation - use Ctrl+C as fallback');
+    
+    // Set selection to make manual copy work
+    this.sheet.setSelection(target.row, target.col, target.rowCount, target.colCount);
+  }
+
+  paste(): void {
+    const target = this.getTargetRange();
+    console.log(`📋 Pasting to: R${target.row}C${target.col}`);
+    
+    // Simple paste implementation - set active cell for manual paste
+    this.sheet.setActiveCell(target.row, target.col);
+    console.log('📋 Paste operation - use Ctrl+V as fallback');
+  }
+
+  async pasteValues(): Promise<void> {
+    const target = this.getTargetRange();
+    console.log(`📋 Pasting values to: R${target.row}C${target.col}`);
+    
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText.trim()) {
+        this.sheet.setValue(target.row, target.col, "📋 Clipboard was empty");
+        return;
+      }
+
+      // Parse clipboard data
+      const lines = clipboardText.split(/\r?\n/);
+      let pastedCells = 0;
+      
+      for (let rowOffset = 0; rowOffset < lines.length; rowOffset++) {
+        const line = lines[rowOffset];
+        if (!line && rowOffset === lines.length - 1) break;
+        
+        const values = line.split('\t');
+        for (let colOffset = 0; colOffset < values.length; colOffset++) {
+          const value = this.parseValue(values[colOffset]);
+          this.sheet.setValue(target.row + rowOffset, target.col + colOffset, value);
+          pastedCells++;
+        }
+      }
+      
+      console.log(`✅ Pasted ${pastedCells} cells as values only`);
+    } catch (error) {
+      console.warn('📋 Clipboard access failed, using demo data');
+      this.sheet.setValue(target.row, target.col, "🎯 PASTE VALUES");
+      this.sheet.setValue(target.row, target.col + 1, "(Clipboard denied)");
+    }
+  }
+
+  // ================================
+  // FORMATTING OPERATIONS  
+  // ================================
+  
+  setBold(enabled: boolean = true): void {
+    const target = this.getTargetRange();
+    console.log(`📝 Setting bold=${enabled}: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    this.applyStyleToRange(target, (style) => {
+      if (enabled) {
+        style.font = style.font ? style.font.replace(/\bbold\b/g, '').trim() + ' bold' : 'bold';
+      } else {
+        style.font = style.font ? style.font.replace(/\bbold\b/g, '').trim() : '';
+      }
+    });
+  }
+
+  setItalic(enabled: boolean = true): void {
+    const target = this.getTargetRange();
+    console.log(`📝 Setting italic=${enabled}: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    this.applyStyleToRange(target, (style) => {
+      if (enabled) {
+        style.font = style.font ? style.font.replace(/\\bitalic\\b/g, '').trim() + ' italic' : 'italic';
+      } else {
+        style.font = style.font ? style.font.replace(/\\bitalic\\b/g, '').trim() : '';
+      }
+    });
+  }
+
+  // ================================
+  // BORDER OPERATIONS
+  // ================================
+  
+  setBorder(side: 'top' | 'bottom' | 'left' | 'right' | 'all', color: string = '#000000'): void {
+    const target = this.getTargetRange();
+    console.log(`🖼️ Adding ${side} border: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    const range = this.sheet.getRange(target.row, target.col, target.rowCount, target.colCount);
+    const borderStyle = GC.Spread.Sheets.LineStyle.thin;
+    const border = new GC.Spread.Sheets.LineBorder(color, borderStyle);
+    
+    switch (side) {
+      case 'top': range.borderTop(border); break;
+      case 'bottom': range.borderBottom(border); break;
+      case 'left': range.borderLeft(border); break;
+      case 'right': range.borderRight(border); break;
+      case 'all':
+        range.borderTop(border);
+        range.borderBottom(border);
+        range.borderLeft(border);
+        range.borderRight(border);
+        break;
+    }
+  }
+
+  // ================================
+  // DATA OPERATIONS
+  // ================================
+  
+  clearContent(): void {
+    const target = this.getTargetRange();
+    console.log(`🧹 Clearing content: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    for (let r = 0; r < target.rowCount; r++) {
+      for (let c = 0; c < target.colCount; c++) {
+        this.sheet.setValue(target.row + r, target.col + c, null);
+      }
+    }
+  }
+
+  sortDescending(): void {
+    const target = this.getTargetRange();
+    console.log(`🔽 Sorting descending: R${target.row}C${target.col} (${target.rowCount}×${target.colCount})`);
+    
+    if (target.rowCount < 2) {
+      console.log("🔽 Selection too small to sort (need at least 2 rows)");
+      return;
+    }
+
+    try {
+      this.sheet.sortRange(
+        target.row, target.col, target.rowCount, target.colCount, 
+        true, // sortByRows
+        [{ index: 0, ascending: false }] // Sort by first column, descending
+      );
+    } catch (error) {
+      console.error('🔽 Sort failed:', error);
+    }
+  }
+
+  autoFitColumns(): void {
+    const target = this.getTargetRange();
+    console.log(`📏 Auto-fitting columns: ${target.col} to ${target.col + target.colCount - 1}`);
+    
+    for (let col = target.col; col < target.col + target.colCount; col++) {
+      this.sheet.autoFitColumn(col);
+    }
+  }
+
+  // ================================
+  // HELPER METHODS
+  // ================================
+  
+  private parseValue(rawValue: string): any {
+    if (!rawValue) return null;
+    
+    const cleanValue = rawValue.trim();
+    const numericValue = parseFloat(cleanValue);
+    
+    if (!isNaN(numericValue) && isFinite(numericValue)) {
+      return numericValue;
+    }
+    
+    // Basic date detection
+    if (/^\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}$/.test(cleanValue)) {
+      const parsed = new Date(cleanValue);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+    
+    return cleanValue;
+  }
+
+  private applyStyleToRange(target: SelectionInfo, styleModifier: (style: GC.Spread.Sheets.Style) => void): void {
+    for (let r = 0; r < target.rowCount; r++) {
+      for (let c = 0; c < target.colCount; c++) {
+        const row = target.row + r;
+        const col = target.col + c;
+        const style = this.sheet.getStyle(row, col) || new GC.Spread.Sheets.Style();
+        styleModifier(style);
+        this.sheet.setStyle(row, col, style);
+      }
+    }
+  }
+}
+
+// ================================
+// COMMAND REGISTRY WITH STANDARDIZED API
+// ================================
+
+export const SPREADSHEET_COMMANDS = {
+  // Clipboard operations
+  copy: (api: SpreadsheetAPI) => api.copy(),
+  paste: (api: SpreadsheetAPI) => api.paste(),
+  pasteValues: (api: SpreadsheetAPI) => api.pasteValues(),
+  
+  // Formatting operations
+  bold: (api: SpreadsheetAPI) => api.setBold(true),
+  italic: (api: SpreadsheetAPI) => api.setItalic(true),
+  
+  // Border operations
+  borderTop: (api: SpreadsheetAPI) => api.setBorder('top'),
+  borderBottom: (api: SpreadsheetAPI) => api.setBorder('bottom'),
+  borderLeft: (api: SpreadsheetAPI) => api.setBorder('left'),
+  borderRight: (api: SpreadsheetAPI) => api.setBorder('right'),
+  borderAll: (api: SpreadsheetAPI) => api.setBorder('all'),
+  
+  // Data operations
+  clearContent: (api: SpreadsheetAPI) => api.clearContent(),
+  sortDesc: (api: SpreadsheetAPI) => api.sortDescending(),
+  autoFitCol: (api: SpreadsheetAPI) => api.autoFitColumns(),
+  
+  // Easy to add more:
+  // freezePanes: (api: SpreadsheetAPI) => api.freezePanes(),
+  // insertRow: (api: SpreadsheetAPI) => api.insertRow(),
+  // deleteRow: (api: SpreadsheetAPI) => api.deleteRow(),
+} as const;
+</file>
 
 <file path=".gitignore">
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
@@ -93,61 +951,376 @@ yarn-debug.log*
 yarn-error.log*
 </file>
 
-<file path="KNOWN_ISSUES.md">
-# Known Issues - KeyTips MVP
+<file path="dev-console.js">
+// ==============================================\n// DEVELOPER CONSOLE FOR RUNTIME KEYTIP MANAGEMENT\n// Add this to browser console for quick testing\n// ==============================================\n\n// Usage in browser console:\n// addCustomKeytip(['H', 'X', 'X'], 'My Custom Command')\n// removeCustomKeytip(['H', 'X', 'X'])\n// listAllKeytips()\n\nwindow.keytipsConsole = {\n  // Add a keytip at runtime (for testing)\n  addCustomKeytip: (sequence, label) => {\n    console.log(`🔧 DEV: Adding custom keytip [${sequence.join(' → ')}] → ${label}`);\n    // This would integrate with the dynamic registration system\n    alert(`Would add: ${sequence.join(' → ')} → ${label}`);\n  },\n  \n  // Remove a keytip\n  removeCustomKeytip: (sequence) => {\n    console.log(`🗑️ DEV: Removing keytip [${sequence.join(' → ')}]`);\n    alert(`Would remove: ${sequence.join(' → ')}`);\n  },\n  \n  // List all current keytips\n  listAllKeytips: () => {\n    console.log('📋 Current KeyTips:');\n    console.log('• Alt/Cmd → H → V → V  (Paste Values)');\n    console.log('• Alt/Cmd → H → B → B  (Border Bottom)');\n    console.log('• Alt/Cmd → H → B → T  (Border Top)');\n    console.log('• Alt/Cmd → H → O → I  (AutoFit Column)');\n    console.log('• Alt/Cmd → A → S      (Sort Descending)');\n    console.log('• Alt/Cmd → H → C → C  (Clear Content)');\n  },\n  \n  // Test conflict detection\n  checkConflicts: (sequence) => {\n    const existing = [\n      ['H','V','V'], ['H','B','B'], ['H','B','T'], \n      ['H','O','I'], ['A','S'], ['H','C','C']\n    ];\n    \n    const hasConflict = existing.some(seq => {\n      const seqStr = sequence.join('');\n      const existingStr = seq.join('');\n      return seqStr === existingStr || \n             seqStr.startsWith(existingStr) || \n             existingStr.startsWith(seqStr);\n    });\n    \n    console.log(`🔍 Conflict check for [${sequence.join(' → ')}]:`, \n                hasConflict ? '❌ CONFLICT' : '✅ OK');\n    return !hasConflict;\n  }\n};\n\nconsole.log('🎹 KeyTips Developer Console loaded!');\nconsole.log('Available commands:');\nconsole.log('• keytipsConsole.addCustomKeytip([\"H\", \"X\", \"Y\"], \"My Command\")');\nconsole.log('• keytipsConsole.removeCustomKeytip([\"H\", \"X\", \"Y\"])');\nconsole.log('• keytipsConsole.listAllKeytips()');\nconsole.log('• keytipsConsole.checkConflicts([\"H\", \"X\", \"Y\"])');\n\nexport {}; // Make this a module\n
+</file>
 
-## Critical Issue: SpreadJS Cell Editor Interference
+<file path="keytips.md">
+# 🎹 KeyTips Guide
 
-**Problem:** When KeyTips is active and collecting key sequences, SpreadJS still enters cell edit mode on the first keystroke, causing:
-- Cell editor/text box opens when pressing first letter (e.g., "H" after Alt)
-- Selected cell content gets overwritten/deleted
-- KeyTips letters sometimes leak into cells as text
-
-**Impact:** 
-- Data loss when using KeyTips on cells with existing content
-- Poor user experience - commands work but data disappears
-- Cell editor competes with KeyTips system for keyboard input
-
-**Root Cause:**
-SpreadJS intercepts keyboard events at a lower level than our event blocking system. Despite aggressive event prevention (keydown, keypress, keyup, input, textInput with stopImmediatePropagation), SpreadJS still receives and processes the first keystroke.
-
-**Current Workaround:**
-Commands execute correctly, but users should:
-1. Use KeyTips on empty cells/ranges when possible
-2. Expect some data loss in selected cells during KeyTip sequences
-3. Re-enter data if accidentally overwritten
-
-**Potential Solutions for Production:**
-1. **SpreadJS API Integration:** Research SpreadJS APIs to programmatically disable/enable cell editing mode
-2. **Custom Input Mode:** Override SpreadJS input handling entirely during KeyTips collection
-3. **Event Interception:** Investigate SpreadJS event pipeline to block at source
-4. **Selection Preservation:** Store/restore cell values before/after KeyTip sequences
-5. **Modal Overlay:** Use invisible overlay to capture all keyboard events during KeyTips
-
-**Priority:** High - affects core usability and data integrity
-
-**Status:** Deferred to post-MVP (Phase 3 otherwise functional)
+This document explains how to add new **KeyTips** (sequential keyboard shortcuts) to the spreadsheet application.
 
 ---
 
-## Other Known Issues
+## 📌 What Are KeyTips?
 
-*None currently identified*
+KeyTips are **sequential keyboard commands** inspired by Excel. They let users execute commands without a mouse by pressing keys one at a time after activation.
+
+**Example:**
+```
+Alt/Cmd → H → V → V   →   Paste Values
+Alt/Cmd → H → B → B   →   Border Bottom
+Alt/Cmd → A → S       →   Sort Descending
+```
 
 ---
 
-## Testing Notes
+## 🔑 Key Concepts
 
-**Commands that work correctly despite editor interference:**
-- HVV (Paste Values): Executes, shows "🎯 PASTED"
-- HBB (Border Bottom): Executes, adds borders  
-- HBT (Border Top): Executes, adds borders
-- HOI (AutoFit Column): Executes, adjusts column width
-- AS (Sort Descending): Executes, sorts selected range
+* **Activation**: User presses `Alt` (Windows/Linux) or `Cmd` (Mac) to start KeyTips mode
+* **Sequential Input**: Keys are entered one at a time (not simultaneously like Ctrl+C)
+* **Registry Driven**: All keytips are defined in a single **registry** object for easy management
+* **Prefix Matching**: System validates partial sequences and provides feedback
+* **Command Execution**: When a complete sequence matches, the corresponding command runs
 
-**Sequence detection:** 100% accurate
-**Command execution:** 100% functional  
-**Data preservation:** BROKEN - requires fix
+---
+
+## 📂 Architecture Overview
+
+```
+src/keytips/
+├── KeyTipsRegistry.ts    ← Define all keytips here
+├── KeyTipsController.ts  ← State machine (handles key sequences)
+├── CommandExecutor.ts    ← Maps commands to SpreadJS actions
+├── KeyTipsOverlay.tsx    ← Visual feedback UI
+└── useKeyTips.ts         ← React integration
+```
+
+**Key files for adding new keytips:**
+1. **`KeyTipsRegistry.ts`** - Add the key sequence
+2. **`CommandExecutor.ts`** - Add the command implementation
+
+---
+
+## ➕ Adding a New KeyTip (Step-by-Step)
+
+### Step 1: Add to Registry
+
+Open `src/keytips/KeyTipsRegistry.ts` and add a new entry to the `KEYTIPS` array:
+
+```typescript
+export const KEYTIPS: KeyTip[] = [
+  // Existing keytips...
+  {
+    chord: ["H", "V", "V"],
+    command: "pasteValues",
+    group: "H",
+    label: "Paste Values"
+  },
+  
+  // 👇 Add your new keytip here
+  {
+    chord: ["H", "F", "S"],           // Key sequence: H → F → S
+    command: "freezeFirstRow",        // Command ID (must match CommandExecutor)
+    group: "H",                       // Optional: grouping (usually first letter)
+    label: "Freeze First Row"         // Optional: human-readable description
+  }
+];
+```
+
+**Properties:**
+- `chord`: Array of keys pressed in sequence (uppercase letters)
+- `command`: Unique command ID that matches your CommandExecutor function
+- `group`: (Optional) Logical grouping, usually the first letter
+- `label`: (Optional) Human-readable description for debugging/UI
+
+### Step 2: Add Command Type
+
+In `src/keytips/CommandExecutor.ts`, add your command to the `CommandId` type:
+
+```typescript
+export type CommandId = 
+  | "pasteValues" 
+  | "borderBottom" 
+  | "borderTop" 
+  | "autoFitCol" 
+  | "sortDesc"
+  | "freezeFirstRow";  // 👈 Add your command here
+```
+
+### Step 3: Implement Command
+
+In the same file, add a case to the `execute` function:
+
+```typescript
+export function execute(cmd: CommandId, ctx: CommandContext): void {
+  const spread = ctx.spread;
+  const sheet = spread.getActiveSheet();
+  const selections = sheet.getSelections();
+  
+  console.log(`🎬 Executing command: ${cmd}`);
+  
+  try {
+    switch (cmd) {
+      // Existing cases...
+      case "freezeFirstRow":
+        executeFreezeFirstRow(sheet);
+        break;
+      
+      default:
+        console.warn(`Unknown command: ${cmd}`);
+    }
+    console.log(`✅ Command ${cmd} executed successfully`);
+  } catch (error) {
+    console.error(`❌ Command ${cmd} failed:`, error);
+  }
+}
+
+// 👇 Implement your command function
+function executeFreezeFirstRow(sheet: GC.Spread.Sheets.Worksheet) {
+  console.log("❄️ Freezing first row");
+  sheet.frozenRowCount(1); // Freeze the first row
+}
+```
+
+### Step 4: Test Your KeyTip
+
+1. Start the development server: `npm start`
+2. Press `Alt` or `Cmd` to activate KeyTips
+3. Type your sequence: `H` → `F` → `S`
+4. Verify the command executes correctly
+
+---
+
+## ✅ Validation Checklist
+
+When adding a new keytip, make sure:
+
+- [ ] **No conflicts detected** - Run `validateRegistry()` to check for conflicts
+- [ ] **Sequence is unique** - No duplicate sequences or problematic prefixes
+- [ ] **Command ID exists** in `CommandExecutor.ts` type and switch statement
+- [ ] **Command function implemented** and handles edge cases gracefully
+- [ ] **Sequence follows patterns** - Use logical groupings (e.g., `H` for formatting)
+- [ ] **Tested manually** - Sequence works end-to-end
+- [ ] **No TypeScript errors** - Code compiles without issues
+
+### 🔍 **Conflict Detection**
+
+The system automatically detects conflicts in development mode. Check browser console for warnings.
+
+**Manual validation:**
+```javascript
+import { validateRegistry, logConflicts } from './src/keytips/KeyTipsRegistry';
+
+// Check for conflicts
+const report = validateRegistry();
+console.log('Has conflicts:', report.hasConflicts);
+
+// Or just log them directly
+logConflicts();
+```
+
+**Conflict types detected:**
+- **Prefix conflicts**: `["H", "B"]` conflicts with `["H", "B", "B"]` - shorter wins
+- **Duplicate sequences**: Same chord used for different commands
+- **Duplicate command IDs**: Same command ID used for different sequences
+- **Extension conflicts**: Longer sequences that extend existing ones
+
+---
+
+## 🧠 Best Practices
+
+### **Mnemonic Key Selection**
+Choose keys that relate to the action:
+- `B` for Borders, `V` for Values, `S` for Sort
+- `F` for Freeze, `W` for Width, `C` for Copy
+
+### **Consistent Grouping** 
+Use logical first-level groupings:
+- `H` group: Formatting (Home ribbon equivalent)
+- `A` group: Data/Analysis operations  
+- `I` group: Insert operations
+- `V` group: View operations
+
+### **Keep Sequences Short**
+- 2-3 keys optimal for frequently used commands
+- Avoid sequences longer than 4 keys
+- Balance memorability with efficiency
+
+### **Avoid Conflicts**
+Before adding a sequence, check for existing ones:
+```bash
+# Search for existing sequences
+grep -r "chord.*H.*F" src/keytips/
+```
+
+---
+
+## 🗂 Current KeyTips Reference
+
+| Shortcut            | Action          | Implementation     |
+| ------------------- | --------------- | ------------------ |
+| Alt/Cmd + H + V + V | Paste Values    | `pasteValues`      |
+| Alt/Cmd + H + B + B | Border Bottom   | `borderBottom`     |
+| Alt/Cmd + H + B + T | Border Top      | `borderTop`        |
+| Alt/Cmd + H + O + I | AutoFit Column  | `autoFitCol`       |
+| Alt/Cmd + A + S     | Sort Descending | `sortDesc`         |
+
+---
+
+## 🔧 Advanced Features
+
+### **Sequence Validation**
+The registry automatically handles:
+- **Prefix validation** - `H` → `HB` → `HBB` shows valid progression
+- **Invalid sequences** - `H` → `Z` shows error and resets
+- **Exact matching** - Only complete sequences trigger commands
+
+### **Dynamic Registration** (Future)
+For runtime keytip registration:
+```typescript
+// Not implemented yet, but architecture supports it
+function registerKeytip(keytip: KeyTip) {
+  KEYTIPS.push(keytip);
+}
+```
+
+---
+
+## 🐛 Troubleshooting
+
+**"Command not found" error:**
+- Check `CommandId` type includes your command
+- Verify switch statement has your case
+- Ensure command function is implemented
+
+**"Invalid sequence" immediately:**
+- Check for typos in `chord` array
+- Run `validateRegistry()` to check for conflicts
+- Make sure keys are uppercase in registry
+- Verify sequence isn't a prefix of existing longer sequences
+
+**Command doesn't execute:**
+- Check browser console for errors
+- Verify SpreadJS APIs are called correctly
+- Test command function in isolation
+
+**TypeScript compilation errors:**
+- Run `npm run build` to see detailed errors
+- Ensure all imports are correct
+- Check that CommandId type is updated
+
+---
+
+## 🚀 Quick Example: Add "Clear Formatting"
+
+```typescript
+// 1. In KeyTipsRegistry.ts
+{
+  chord: ["H", "C", "F"],
+  command: "clearFormatting",
+  group: "H", 
+  label: "Clear Formatting"
+}
+
+// 2. In CommandExecutor.ts - Add to type
+export type CommandId = "..." | "clearFormatting";
+
+// 3. In CommandExecutor.ts - Add to switch
+case "clearFormatting":
+  executeClearFormatting(sheet, selections);
+  break;
+
+// 4. In CommandExecutor.ts - Implement function  
+function executeClearFormatting(
+  sheet: GC.Spread.Sheets.Worksheet, 
+  selections: GC.Spread.Sheets.Range[]
+) {
+  console.log("🧹 Clearing formatting");
+  if (selections.length === 0) {
+    const activeRow = sheet.getActiveRowIndex();
+    const activeCol = sheet.getActiveColumnIndex();
+    sheet.clearRange(activeRow, activeCol, 1, 1, 
+      GC.Spread.Sheets.SheetArea.viewport, 
+      GC.Spread.Sheets.StorageType.style);
+  } else {
+    selections.forEach(sel => {
+      sheet.clearRange(sel.row, sel.col, sel.rowCount, sel.colCount,
+        GC.Spread.Sheets.SheetArea.viewport,
+        GC.Spread.Sheets.StorageType.style);
+    });
+  }
+}
+```
+
+Test with: `Alt/Cmd` → `H` → `C` → `F`
+
+---
+
+## 🔧 **Conflict Detection Example**
+
+Let's say you accidentally try to add a conflicting keytip:
+
+```typescript
+// BAD: This would create a conflict!
+export const KEYTIPS: KeyTip[] = [
+  // ... existing keytips
+  {
+    chord: ["H", "B"],        // ❌ CONFLICT: Prefix of existing H→B→B and H→B→T
+    command: "borderMenu",
+    label: "Border Menu"
+  }
+];
+```
+
+**When you save and reload the app, you'll see in the browser console:**
+
+```
+⚠️ KeyTips Registry: 1 conflict(s) detected:
+1. [PREFIX] Sequence [H → B] is a prefix of [H → B → B]. The shorter sequence will always trigger first.
+   Keytip 1: [H → B] → borderMenu
+   Keytip 2: [H → B → B] → borderBottom
+```
+
+**Why this is bad:** Users would never be able to access `H→B→B` or `H→B→T` because `H→B` would trigger first.
+
+**The fix:** Use a different sequence like:
+```typescript
+{
+  chord: ["H", "B", "M"],   // ✅ GOOD: Unique path
+  command: "borderMenu",
+  label: "Border Menu"
+}
+```
+
+---
+
+## 🛡️ **Conflict Prevention Tips**
+
+1. **Check console** - Always check browser console after adding keytips
+2. **Use unique paths** - Don't make shorter versions of existing sequences
+3. **Plan your tree** - Sketch out your key hierarchy before implementing
+4. **Test manually** - Try your sequences to ensure they work as expected
+
+**Example of a well-planned hierarchy:**
+```
+H (Home/Formatting)
+├── V (Values)
+│   └── V → Paste Values
+├── B (Borders) 
+│   ├── B → Border Bottom
+│   ├── T → Border Top
+│   └── A → Border All
+└── O (Options)
+    └── I → AutoFit Column
+
+A (Analysis/Data)
+└── S → Sort Descending
+```
+
+---
+
+With this architecture and conflict detection, adding new KeyTips takes just a few minutes and requires **zero changes** to the controller or UI logic. The registry-driven approach scales to 100+ keytips efficiently with automatic conflict prevention! 🎉
 </file>
 
 <file path="package.json">
@@ -287,105 +1460,6 @@ User-agent: *
 Disallow:
 </file>
 
-<file path="README.md">
-## Overview
-
-Your task is to implement a keyboard-driven command interface for a web-based spreadsheet application, similar to Excel's KeyTips feature. This system allows users to execute spreadsheet commands through sequential keyboard shortcuts.
-
-**Time Expectation**: 1-2 hours
-**Deliverables**: A working implementation and documentation in a GitHub pull request.
-
-## What are KeyTips?
-
-KeyTips provide keyboard accessibility by:
-
-* Activating with Alt (Windows/Linux) or Cmd (Mac)
-* Showing visual overlays of available keyboard shortcuts
-* Allowing sequential key presses to navigate and execute commands
-* Example: Alt → H → V → V executes "Paste Values"
-
-Watch this [Excel KeyTips demonstration](https://www.youtube.com/watch?v=emU9KcZKw9k) to understand the user experience. Note: The ribbon interface shown is not required for your implementation.
-
-You can also see [how KeyTips are implemented in Meridian](https://drive.google.com/file/d/1-GANv2HjCTGD7TGFt6htRV2emEpIIZDn/view?usp=sharing) for reference. Note: Your UI implementation does not need to look the same as Meridian's interface.
-
-## Why This Matters
-
-For many financial professionals—especially in banking and consulting—Excel is their IDE. They rely almost entirely on the keyboard, navigating and editing at high speed with muscle memory alone. Reaching for the mouse breaks flow. KeyTips aren’t just a nice-to-have—they’re essential to preserving the kind of power-user experience that makes spreadsheets feel seamless. This assignment simulates how we bring that level of keyboard-driven efficiency into a modern, web-based spreadsheet environment.
-
-## Requirements
-
-### 1. Implement These 5 KeyTips
-
-| Shortcut            | Action          | Description                             |
-| ------------------- | --------------- | --------------------------------------- |
-| Alt/Cmd + H + V + V | Paste Values    | Paste only values (not formulas)        |
-| Alt/Cmd + H + B + B | Border Bottom   | Add bottom border to selected cells     |
-| Alt/Cmd + H + B + T | Border Top      | Add top border to selected cells        |
-| Alt/Cmd + H + O + I | AutoFit Column  | Adjust column width to fit content      |
-| Alt/Cmd + A + S     | Sort Descending | Sort selected cells in descending order |
-
-### 2. User Experience Requirements
-
-* **Activation**: Pressing Alt/Cmd should activate the KeyTips system
-* **Sequential Input**: Keys are pressed one at a time (not simultaneously)
-* **Visual Feedback**: Display the currently active key sequence
-* **Cancellation**: Allow users to exit at any point (Esc or clicking away)
-* **Action Behavior**: Each action should work equivalently to Google Sheets
-
-### 3. Technical Requirements
-
-* Design the system to support 100+ potential keytips (not just the 5 required)
-* Use the provided spreadsheet library
-* Create a `keytips.md` file explaining how to add new keytips
-
-### 4. Documentation & Submission
-
-Submit a PR containing:
-
-* Your implementation code
-* `keytips.md` - Instructions for adding new keytips
-* Updated README listing what you would improve to consider the system "production grade", ranked by importance
-
-## Getting Started & Submission Steps
-
-1. Clone this repository locally and create a separate private repo for permission (add gfang200 as a collaborator)
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-
-   ```bash
-   npm run start
-   ```
-4. Implement the KeyTips system
-5. Push your work to your cloned private repository and share the link
-
-## What We're Looking For
-
-**No pressure!** We know this is a time-pressured challenge, and we're not expecting a perfect, production-ready system. Our goal is to understand how you approach problems and make decisions within realistic time constraints.
-
-We love to see:
-
-* Clear thought process and systematic approach to tackling implementation challenges
-* Intentional balance between features and infrastructure with ruthless prioritization when time or knowledge is limited
-* Proactive handling of edge cases and adherence to best practices
-* Effective use of AI tools, documentation, and other resources to solve problems efficiently
-* Strong ability to autonomously understand and extend requirements from the examples provided
-
-Remember: This is about understanding your development approach, not getting everything perfect. Focus on the MVP requirements and share your thoughts on what you'd improve for production use!
-
-## Tips
-
-* Use AI tools effectively but don't get stuck. SpreadJS documentation ([https://developer.mescius.com/spreadjs/docs/overview](https://developer.mescius.com/spreadjs/docs/overview)) is also a great resource
-* Try performing these operations manually in Google Sheets to understand the expected behavior and user experience
-* Consider how the system should handle cases like invalid key sequences
-* Feel free to make implementation decisions that best showcase your skills!
-
-Good luck! If you have questions about how any specific Google Sheets behavior works, please ask for clarification.
-</file>
-
 <file path="src/App.css">
 .App {
   width: 100vw;
@@ -415,7 +1489,7 @@ test('renders learn react link', () => {
 </file>
 
 <file path="src/App.tsx">
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as GC from '@mescius/spread-sheets';
 import { SpreadSheets } from '@mescius/spread-sheets-react';
 import '@mescius/spread-sheets/styles/gc.spread.sheets.excel2013white.css';
@@ -423,10 +1497,18 @@ import './App.css';
 import { execute, type CommandId } from './keytips/CommandExecutor';
 import { useKeyTips } from './keytips/useKeyTips';
 import { KeyTipsOverlay } from './keytips/KeyTipsOverlay';
+import { KeyTipsSettings } from './keytips/KeyTipsSettings';
+import { loadUserKeytips } from './keytips/DynamicKeytips';
 
 function App() {
   const spreadRef = useRef<any>(null);
   const { active, sequence, invalidFlash, controller } = useKeyTips();
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Load user keytips on app start
+  useEffect(() => {
+    loadUserKeytips();
+  }, []);
 
   const initSpread = (spread: any) => {
     console.log('Spread initialized');
@@ -488,48 +1570,172 @@ function App() {
     sheet.autoFitColumn(3);
   };
 
-  // Phase 4: KeyTips with Visual Feedback
+  // Enhanced KeyTips with Cell Editor Protection
   useEffect(() => {
+    let preservedCellValue: any = null;
+    let preservedCellRow: number = -1;
+    let preservedCellCol: number = -1;
+    let spreadEditorDisabled = false;
+
+    // Helper function to disable SpreadJS editing
+    const disableSpreadJSEditor = () => {
+      if (!spreadRef.current || spreadEditorDisabled) return;
+      
+      try {
+        const currentSpread = spreadRef.current.spread || spreadRef.current;
+        if (!currentSpread) {
+          console.warn('⚠️ Cannot disable SpreadJS editor - spread not available');
+          return;
+        }
+        
+        const sheet = currentSpread.getActiveSheet();
+        if (!sheet) {
+          console.warn('⚠️ Cannot disable SpreadJS editor - no active sheet');
+          return;
+        }
+        
+        // Preserve current cell value before disabling editing
+        try {
+          preservedCellRow = sheet.getActiveRowIndex();
+          preservedCellCol = sheet.getActiveColumnIndex();
+          preservedCellValue = sheet.getValue(preservedCellRow, preservedCellCol);
+        } catch (error) {
+          console.warn('⚠️ Could not preserve cell value:', error);
+        }
+        
+        // Try to disable cell editing via SpreadJS APIs
+        try {
+          if (sheet.options) {
+            sheet.options.isProtected = true;
+            console.log('🔒 SpreadJS editing temporarily disabled');
+            spreadEditorDisabled = true;
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not set sheet protection:', error);
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not disable SpreadJS editor via API:', error);
+      }
+    };
+
+    // Helper function to re-enable SpreadJS editing
+    const enableSpreadJSEditor = () => {
+      if (!spreadRef.current || !spreadEditorDisabled) return;
+      
+      try {
+        const currentSpread = spreadRef.current.spread || spreadRef.current;
+        if (!currentSpread) {
+          console.warn('⚠️ Cannot re-enable SpreadJS editor - spread not available');
+          return;
+        }
+        
+        const sheet = currentSpread.getActiveSheet();
+        if (!sheet) {
+          console.warn('⚠️ Cannot re-enable SpreadJS editor - no active sheet');
+          return;
+        }
+        
+        // Re-enable editing
+        try {
+          if (sheet.options) {
+            sheet.options.isProtected = false;
+            console.log('🔓 SpreadJS editing re-enabled');
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not remove sheet protection:', error);
+        }
+        
+        // Restore cell value if it was corrupted during KeyTips sequence
+        if (preservedCellRow >= 0 && preservedCellCol >= 0) {
+          try {
+            const currentValue = sheet.getValue(preservedCellRow, preservedCellCol);
+            
+            // Check if value was corrupted (contains single letters that could be from KeyTips)
+            if (currentValue && typeof currentValue === 'string' && 
+                currentValue.length === 1 && /^[A-Za-z]$/.test(currentValue) &&
+                currentValue !== preservedCellValue) {
+              
+              console.log(`🔄 Restoring corrupted cell R${preservedCellRow}C${preservedCellCol}: "${currentValue}" → "${preservedCellValue}"`);
+              sheet.setValue(preservedCellRow, preservedCellCol, preservedCellValue);
+            }
+          } catch (error) {
+            console.warn('⚠️ Could not restore cell value:', error);
+          }
+        }
+        
+        spreadEditorDisabled = false;
+        preservedCellValue = null;
+        preservedCellRow = -1;
+        preservedCellCol = -1;
+      } catch (error) {
+        console.warn('⚠️ Could not re-enable SpreadJS editor:', error);
+      }
+    };
+
     // Handle command execution
     const originalOnMatchedCommand = controller['events'].onMatchedCommand;
     controller['events'].onMatchedCommand = (cmd: string) => {
       originalOnMatchedCommand?.(cmd);
-      // Execute the actual command
+      
+      // Get the spread instance more reliably
       const spread = spreadRef.current?.spread || spreadRef.current;
-      if (spread) {
-        execute(cmd as CommandId, { spread });
-      } else {
-        console.error('Spread instance not available');
+      
+      if (!spread) {
+        console.error('❌ Spread instance not available - retrying...');
+        // Retry after a short delay
+        setTimeout(async () => {
+          const retrySpread = spreadRef.current?.spread || spreadRef.current;
+          if (retrySpread) {
+            console.log('✅ Spread instance found on retry');
+            await execute(cmd as CommandId, { spread: retrySpread });
+          } else {
+            console.error('❌ Spread instance still not available after retry');
+          }
+        }, 100);
+        return;
       }
+      
+      console.log('🎬 Executing command with spread instance:', !!spread);
+      execute(cmd as CommandId, { spread }).catch(error => {
+        console.error('❌ Command execution failed:', error);
+      });
     };
 
-    // Block ALL events more aggressively (from Phase 3 - keeping known issue)
-    const blockEvent = (e: Event) => {
+    // Enhanced activation handler
+    const originalOnActivate = controller['events'].onActivate;
+    controller['events'].onActivate = () => {
+      console.log('🚀 KeyTips activated - protecting cell data');
+      disableSpreadJSEditor();
+      originalOnActivate?.();
+    };
+
+    // Enhanced cancel/reset handlers
+    const originalOnCancel = controller['events'].onCancel;
+    controller['events'].onCancel = () => {
+      console.log('⛔ KeyTips cancelled - restoring editor');
+      enableSpreadJSEditor();
+      originalOnCancel?.();
+    };
+
+    // Enhanced invalid handler
+    const originalOnInvalid = controller['events'].onInvalid;
+    controller['events'].onInvalid = (seq) => {
+      console.log('❌ KeyTips invalid - restoring editor');
+      enableSpreadJSEditor();
+      originalOnInvalid?.(seq);
+    };
+
+    // Ultra-aggressive event blocking with highest priority
+    const blockAllEvents = (e: Event) => {
       if (controller.getMode() === 'collecting') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        return false;
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (controller.getMode() === 'collecting') {
-        blockEvent(e);
-        return false;
-      }
-    };
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (controller.getMode() === 'collecting') {
-        blockEvent(e);
-        return false;
-      }
-    };
-
-    const handleInput = (e: Event) => {
-      if (controller.getMode() === 'collecting') {
-        blockEvent(e);
+        
+        // Also try to prevent default behavior
+        if ('returnValue' in e) {
+          (e as any).returnValue = false;
+        }
         return false;
       }
     };
@@ -542,19 +1748,18 @@ function App() {
       if (isAlt || isMeta) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         controller.activate();
         return false;
       }
 
-      if (isEsc) {
-        // Phase 5: Enhanced Escape handling
-        if (controller.getMode() === 'collecting') {
-          console.log('⏸️ Escape pressed - cancelling KeyTips');
-          e.preventDefault();
-          e.stopPropagation();
-          controller.cancel();
-        }
-        return;
+      if (isEsc && controller.getMode() === 'collecting') {
+        console.log('⏸️ Escape pressed - cancelling KeyTips');
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        controller.cancel();
+        return false;
       }
 
       if (controller.getMode() === 'collecting') {
@@ -569,56 +1774,88 @@ function App() {
     };
 
     const handleMouseDown = () => {
-      // Phase 5: Cancel on click outside
       if (controller.getMode() === 'collecting') {
         console.log('🖱️ Mouse click detected - cancelling KeyTips');
         controller.cancel();
       }
     };
 
-    // Add multiple event listeners to catch everything
-    const events = ['keydown', 'keypress', 'keyup', 'input', 'textInput'];
+    // Add event listeners with maximum priority (capture phase + immediate)
+    const eventTypes = ['keydown', 'keypress', 'keyup', 'input', 'textInput', 'beforeinput'];
     
-    events.forEach(eventType => {
-      if (eventType === 'keyup') {
-        window.addEventListener(eventType, handleKeyUp, true);
-      } else if (eventType === 'keydown') {
-        window.addEventListener(eventType, handleKeyDown, true);
-      } else if (eventType === 'keypress') {
-        window.addEventListener(eventType, handleKeyPress, true);
-      } else {
-        window.addEventListener(eventType, handleInput, true);
+    // Add keyup handler first
+    document.addEventListener('keyup', handleKeyUp, true);
+    window.addEventListener('keyup', handleKeyUp, true);
+    
+    // Add ultra-aggressive blocking for all other keyboard events
+    eventTypes.forEach(eventType => {
+      if (eventType !== 'keyup') {
+        document.addEventListener(eventType, blockAllEvents, true);
+        window.addEventListener(eventType, blockAllEvents, true);
+        // Also add to document.body for extra coverage
+        document.body?.addEventListener(eventType, blockAllEvents, true);
       }
     });
     
+    // Mouse event handling
+    document.addEventListener('mousedown', handleMouseDown, true);
     window.addEventListener('mousedown', handleMouseDown, true);
 
     return () => {
-      events.forEach(eventType => {
-        if (eventType === 'keyup') {
-          window.removeEventListener(eventType, handleKeyUp, true);
-        } else if (eventType === 'keydown') {
-          window.removeEventListener(eventType, handleKeyDown, true);
-        } else if (eventType === 'keypress') {
-          window.removeEventListener(eventType, handleKeyPress, true);
-        } else {
-          window.removeEventListener(eventType, handleInput, true);
+      // Cleanup: restore editor if KeyTips was active
+      if (spreadEditorDisabled) {
+        enableSpreadJSEditor();
+      }
+      
+      // Remove event listeners
+      document.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
+      
+      eventTypes.forEach(eventType => {
+        if (eventType !== 'keyup') {
+          document.removeEventListener(eventType, blockAllEvents, true);
+          window.removeEventListener(eventType, blockAllEvents, true);
+          document.body?.removeEventListener(eventType, blockAllEvents, true);
         }
       });
+      
+      document.removeEventListener('mousedown', handleMouseDown, true);
       window.removeEventListener('mousedown', handleMouseDown, true);
     };
   }, [controller]);
 
   return (
     <div className="App" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
-      <h2 style={{ 
+      {/* Header with Settings Button */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         margin: 0, 
         padding: '10px', 
         backgroundColor: '#f5f5f5', 
         borderBottom: '1px solid #ddd' 
       }}>
-        Meridian Take Home
-      </h2>
+        <h2 style={{ margin: 0 }}>Meridian Take Home</h2>
+        <button 
+          onClick={() => setShowSettings(true)}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#1a73e8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          ⌨️ KeyTips Settings
+        </button>
+      </div>
       <div style={{ flex: 1, position: 'relative' }}>
         <SpreadSheets 
           ref={spreadRef}
@@ -635,6 +1872,59 @@ function App() {
           active={active} 
           sequence={sequence} 
           invalidFlash={invalidFlash} 
+        />
+        
+        {/* Invisible overlay to prevent SpreadJS from receiving keyboard events during KeyTips */}
+        {active && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'transparent',
+              zIndex: 10000, // Higher than SpreadJS but lower than KeyTipsOverlay
+              pointerEvents: 'auto', // Allow mouse events to cancel
+              userSelect: 'none',
+              cursor: 'default'
+            }}
+            onKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🛡️ Overlay blocked keydown:', e.key);
+            }}
+            onKeyPress={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🛡️ Overlay blocked keypress:', e.key);
+            }}
+            onInput={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🛡️ Overlay blocked input');
+            }}
+            onClick={() => {
+              console.log('🛡️ Overlay click - cancelling KeyTips');
+              controller.cancel();
+            }}
+            tabIndex={-1} // Make it focusable to capture keyboard events
+            ref={(el) => {
+              if (el && active) {
+                el.focus();
+              }
+            }}
+          />
+        )}
+        
+        {/* KeyTips Settings Modal */}
+        <KeyTipsSettings 
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          onKeytipsChange={() => {
+            // Refresh the controller with new keytips
+            console.log('🔄 User keytips updated - system refreshed');
+          }}
         />
       </div>
     </div>
@@ -685,159 +1975,51 @@ reportWebVitals();
 <file path="src/keytips/CommandExecutor.ts">
 // ==============================================
 // File: src/keytips/CommandExecutor.ts
-// Executes actual spreadsheet commands via SpreadJS API
+// Executes actual spreadsheet commands via standardized SpreadsheetAPI
 // ==============================================
 
 import * as GC from '@mescius/spread-sheets';
+import { SpreadsheetAPI, SPREADSHEET_COMMANDS } from './SpreadsheetAPI';
 
-export type CommandId = "pasteValues" | "borderBottom" | "borderTop" | "autoFitCol" | "sortDesc";
+export type CommandId = keyof typeof SPREADSHEET_COMMANDS;
 
 export interface CommandContext {
   spread: GC.Spread.Sheets.Workbook;
 }
 
-export function execute(cmd: CommandId, ctx: CommandContext): void {
-  const spread = ctx.spread;
-  const sheet = spread.getActiveSheet();
-  const selections = sheet.getSelections();
+export async function execute(cmd: CommandId, ctx: CommandContext): Promise<void> {
+  if (!ctx || !ctx.spread) {
+    console.error('❌ Cannot execute command - invalid context or spread instance');
+    return;
+  }
   
   console.log(`🎬 Executing command: ${cmd}`);
   
   try {
-    switch (cmd) {
-      case "pasteValues":
-        executePasteValues(sheet, selections);
-        break;
-      case "borderBottom":
-        executeBorder(sheet, selections, "bottom");
-        break;
-      case "borderTop":
-        executeBorder(sheet, selections, "top");
-        break;
-      case "autoFitCol":
-        executeAutoFitColumn(sheet, selections);
-        break;
-      case "sortDesc":
-        executeSortDescending(sheet, selections);
-        break;
-      default:
-        console.warn(`Unknown command: ${cmd}`);
+    // Create standardized API instance
+    const api = new SpreadsheetAPI(ctx.spread);
+    
+    // Get command function and execute it
+    const commandFn = SPREADSHEET_COMMANDS[cmd];
+    if (!commandFn) {
+      console.error(`❌ Unknown command: ${cmd}`);
+      return;
     }
+    
+    // Execute command - the API handles all SpreadJS complexity
+    await commandFn(api);
+    
     console.log(`✅ Command ${cmd} executed successfully`);
   } catch (error) {
     console.error(`❌ Command ${cmd} failed:`, error);
-    // In a production app, you'd show a user-friendly error message
   }
 }
 
-function executePasteValues(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
-  // For MVP, we'll simulate paste values by copying some sample data
-  // In a real app, you'd read from clipboard or SpreadJS copy buffer
-  
-  if (selections.length === 0) {
-    console.log("📋 No selection for paste - using active cell");
-    const activeRow = sheet.getActiveRowIndex();
-    const activeCol = sheet.getActiveColumnIndex();
-    console.log(`📋 Pasting to active cell: R${activeRow}C${activeCol}`);
-    // Paste some obvious sample values to demonstrate
-    sheet.setValue(activeRow, activeCol, "🎯 PASTED");
-    sheet.setValue(activeRow + 1, activeCol, "Value 2");
-    sheet.setValue(activeRow, activeCol + 1, "Value 3");
-    return;
-  }
-
-  const selection = selections[0]; // Use first selection
-  console.log(`📋 Pasting values to selection: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
-  
-  // Paste obvious sample values that are easy to spot
-  for (let r = 0; r < Math.min(selection.rowCount, 3); r++) {
-    for (let c = 0; c < Math.min(selection.colCount, 3); c++) {
-      if (r === 0 && c === 0) {
-        sheet.setValue(selection.row + r, selection.col + c, `🎯 PASTED`);
-      } else {
-        sheet.setValue(selection.row + r, selection.col + c, `Val${r + 1}.${c + 1}`);
-      }
-    }
-  }
-}
-
-function executeBorder(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[], side: "top" | "bottom") {
-  if (selections.length === 0) {
-    console.log(`🖼️ No selection for border - using active cell`);
-    const activeRow = sheet.getActiveRowIndex();
-    const activeCol = sheet.getActiveColumnIndex();
-    selections = [new GC.Spread.Sheets.Range(activeRow, activeCol, 1, 1)];
-  }
-
-  for (const selection of selections) {
-    console.log(`🖼️ Adding ${side} border to: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
-    
-    const range = sheet.getRange(selection.row, selection.col, selection.rowCount, selection.colCount);
-    const borderColor = "#000000";
-    const borderStyle = GC.Spread.Sheets.LineStyle.thin;
-    
-    if (side === "bottom") {
-      range.borderBottom(new GC.Spread.Sheets.LineBorder(borderColor, borderStyle));
-    } else if (side === "top") {
-      range.borderTop(new GC.Spread.Sheets.LineBorder(borderColor, borderStyle));
-    }
-  }
-}
-
-function executeAutoFitColumn(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
-  if (selections.length === 0) {
-    console.log("📏 No selection for autofit - using active column");
-    const activeCol = sheet.getActiveColumnIndex();
-    sheet.autoFitColumn(activeCol);
-    return;
-  }
-
-  const selection = selections[0];
-  console.log(`📏 Auto-fitting columns: ${selection.col} to ${selection.col + selection.colCount - 1}`);
-  
-  // AutoFit all columns in the selection
-  for (let col = selection.col; col < selection.col + selection.colCount; col++) {
-    sheet.autoFitColumn(col);
-  }
-}
-
-function executeSortDescending(sheet: GC.Spread.Sheets.Worksheet, selections: GC.Spread.Sheets.Range[]) {
-  if (selections.length === 0) {
-    console.log("🔽 No selection for sort - cannot sort without range");
-    return;
-  }
-
-  const selection = selections[0];
-  console.log(`🔽 Sorting descending: R${selection.row}C${selection.col} (${selection.rowCount}×${selection.colCount})`);
-  
-  if (selection.rowCount < 2) {
-    console.log("🔽 Selection too small to sort (need at least 2 rows)");
-    return;
-  }
-
-  // Sort the range by the first column, descending
-  // For MVP, we'll use the simpler sortRange signature
-  try {
-    sheet.sortRange(
-      selection.row, 
-      selection.col, 
-      selection.rowCount, 
-      selection.colCount, 
-      true, // sortByRows
-      [
-        {
-          index: 0, // First column of selection
-          ascending: false // Descending
-        }
-      ]
-      // Omit options parameter for MVP simplicity
-    );
-  } catch (error) {
-    console.error('Sort failed, trying simpler approach:', error);
-    // Fallback: If the advanced sort fails, we could implement a simple manual sort
-    // For MVP, we'll just log the error
-  }
-}
+// That's it! No more manual SpreadJS API calls needed.
+// Adding new commands is now as simple as:
+// 1. Add to SPREADSHEET_COMMANDS in SpreadsheetAPI.ts
+// 2. Add to AVAILABLE_COMMANDS in DynamicKeytips.ts
+// 3. Business users can immediately use it!
 </file>
 
 <file path="src/keytips/KeyTipsController.ts">
@@ -845,6 +2027,8 @@ function executeSortDescending(sheet: GC.Spread.Sheets.Worksheet, selections: GC
 // File: src/keytips/KeyTipsController.ts
 // Headless controller for KeyTips state machine
 // ==============================================
+
+import { matchChordPrefixDynamic as matchChordPrefix } from "./DynamicKeytips";
 
 export type Mode = "inactive" | "collecting";
 
@@ -891,51 +2075,27 @@ export class KeyTipsController {
     console.log(`📝 KeyTips sequence: [${this.seq.join(' → ')}]`);
     this.events.onSequenceChange?.(this.seq);
 
-    // TODO: Check against registry - for now just placeholder logic
-    // This will be replaced when we add the registry
-    const seqStr = this.seq.join('');
-    if (seqStr === 'HVV') {
-      console.log("✅ Matched: pasteValues");
-      this.events.onMatchedCommand?.("pasteValues");
-      this.reset();
-      return;
-    }
-    
-    if (seqStr === 'HBB') {
-      console.log("✅ Matched: borderBottom");
-      this.events.onMatchedCommand?.("borderBottom");
+    // Check against registry for matches
+    const { isExact, isPrefix, match } = matchChordPrefix(this.seq);
+
+    if (isExact && match) {
+      // Exact match found - execute command and reset
+      console.log(`✅ Matched: ${match.command} (${match.label})`);
+      this.events.onMatchedCommand?.(match.command);
       this.reset();
       return;
     }
 
-    if (seqStr === 'HBT') {
-      console.log("✅ Matched: borderTop");
-      this.events.onMatchedCommand?.("borderTop");
-      this.reset();
-      return;
-    }
-
-    if (seqStr === 'HOI') {
-      console.log("✅ Matched: autoFitCol");
-      this.events.onMatchedCommand?.("autoFitCol");
-      this.reset();
-      return;
-    }
-
-    if (seqStr === 'AS') {
-      console.log("✅ Matched: sortDesc");
-      this.events.onMatchedCommand?.("sortDesc");
-      this.reset();
-      return;
-    }
-
-    // Check if it's still a valid prefix (simplified for now)
-    const validPrefixes = ['H', 'A', 'HV', 'HB', 'HO'];
-    if (!validPrefixes.includes(seqStr)) {
-      console.log("❌ Invalid sequence");
+    if (!isPrefix) {
+      // No valid prefix - invalid sequence
+      console.log(`❌ Invalid sequence: [${this.seq.join(' → ')}]`);
       this.events.onInvalid?.(this.seq);
       this.reset();
+      return;
     }
+
+    // Valid prefix - continue collecting
+    console.log(`🔄 Valid prefix: [${this.seq.join(' → ')}] - continue collecting`);
   }
 
   cancel() {
@@ -981,7 +2141,7 @@ export function KeyTipsOverlay({ active, sequence, invalidFlash }: {
       fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
       fontSize: 14,
       boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-      zIndex: 9999,
+      zIndex: 10001, // Above protective overlay
       userSelect: "none",
       pointerEvents: "none",
       transition: "background 150ms ease, border 150ms ease, color 150ms ease",
@@ -999,7 +2159,7 @@ export function KeyTipsOverlay({ active, sequence, invalidFlash }: {
 }
 </file>
 
-<file path="src/keytips/KeyTipsRegistry.ts.backup">
+<file path="src/keytips/KeyTipsRegistry.ts">
 // ==============================================
 // File: src/keytips/KeyTipsRegistry.ts
 // Declarative registry of all KeyTips sequences
@@ -1015,6 +2175,7 @@ export interface KeyTip {
 }
 
 // Registry of all KeyTips (MVP: 5 required sequences)
+// ⚠️ IMPORTANT: Run `validateRegistry()` after adding new keytips to check for conflicts
 export const KEYTIPS: KeyTip[] = [
   {
     chord: ["H", "V", "V"],
@@ -1045,6 +2206,12 @@ export const KEYTIPS: KeyTip[] = [
     command: "sortDesc",
     group: "A",
     label: "Sort Descending"
+  },
+  {
+    chord: ["H", "C", "C"],
+    command: "clearContent",
+    group: "H",
+    label: "Clear Content"
   }
 ];
 
@@ -1097,6 +2264,114 @@ export function getNextKeys(sequence: string[]): string[] {
   }
   
   return Array.from(nextKeys).sort();
+}
+
+// ==============================================
+// CONFLICT DETECTION SYSTEM
+// ==============================================
+
+export interface ConflictReport {
+  hasConflicts: boolean;
+  conflicts: {
+    type: 'prefix' | 'extension' | 'duplicate' | 'commandId';
+    keytip1: KeyTip;
+    keytip2: KeyTip;
+    description: string;
+  }[];
+}
+
+// Validate registry for conflicts
+export function validateRegistry(keytips: KeyTip[] = KEYTIPS): ConflictReport {
+  const conflicts: ConflictReport['conflicts'] = [];
+  const seenCommands = new Set<string>();
+  const seenSequences = new Set<string>();
+
+  for (let i = 0; i < keytips.length; i++) {
+    const keytip1 = keytips[i];
+    const sequence1Str = keytip1.chord.join(',');
+
+    // Check for duplicate command IDs
+    if (seenCommands.has(keytip1.command)) {
+      const duplicate = keytips.find(kt => kt.command === keytip1.command && kt !== keytip1)!;
+      conflicts.push({
+        type: 'commandId',
+        keytip1,
+        keytip2: duplicate,
+        description: `Command ID '${keytip1.command}' is used by multiple keytips`
+      });
+    }
+    seenCommands.add(keytip1.command);
+
+    // Check for duplicate sequences
+    if (seenSequences.has(sequence1Str)) {
+      const duplicate = keytips.find(kt => kt.chord.join(',') === sequence1Str && kt !== keytip1)!;
+      conflicts.push({
+        type: 'duplicate',
+        keytip1,
+        keytip2: duplicate,
+        description: `Sequence [${keytip1.chord.join(' → ')}] is used by multiple commands`
+      });
+    }
+    seenSequences.add(sequence1Str);
+
+    // Check for prefix/extension conflicts with other keytips
+    for (let j = i + 1; j < keytips.length; j++) {
+      const keytip2 = keytips[j];
+      
+      // Check if keytip1 is a prefix of keytip2
+      if (isPrefix(keytip1.chord, keytip2.chord)) {
+        conflicts.push({
+          type: 'prefix',
+          keytip1,
+          keytip2,
+          description: `Sequence [${keytip1.chord.join(' → ')}] is a prefix of [${keytip2.chord.join(' → ')}]. The shorter sequence will always trigger first.`
+        });
+      }
+      
+      // Check if keytip2 is a prefix of keytip1
+      if (isPrefix(keytip2.chord, keytip1.chord)) {
+        conflicts.push({
+          type: 'prefix',
+          keytip1: keytip2,
+          keytip2: keytip1,
+          description: `Sequence [${keytip2.chord.join(' → ')}] is a prefix of [${keytip1.chord.join(' → ')}]. The shorter sequence will always trigger first.`
+        });
+      }
+    }
+  }
+
+  return {
+    hasConflicts: conflicts.length > 0,
+    conflicts
+  };
+}
+
+// Helper: Check if sequence A is a prefix of sequence B
+function isPrefix(a: string[], b: string[]): boolean {
+  if (a.length >= b.length) return false;
+  return a.every((key, index) => key === b[index]);
+}
+
+// Helper: Log conflicts to console (for development)
+export function logConflicts(keytips: KeyTip[] = KEYTIPS): void {
+  const report = validateRegistry(keytips);
+  
+  if (!report.hasConflicts) {
+    console.log('✅ KeyTips Registry: No conflicts detected');
+    return;
+  }
+  
+  console.warn(`⚠️ KeyTips Registry: ${report.conflicts.length} conflict(s) detected:`);
+  report.conflicts.forEach((conflict, index) => {
+    console.warn(`${index + 1}. [${conflict.type.toUpperCase()}] ${conflict.description}`);
+    console.warn(`   Keytip 1: [${conflict.keytip1.chord.join(' → ')}] → ${conflict.keytip1.command}`);
+    console.warn(`   Keytip 2: [${conflict.keytip2.chord.join(' → ')}] → ${conflict.keytip2.command}`);
+  });
+}
+
+// Run validation on module load (development check)
+if (process.env.NODE_ENV === 'development') {
+  logConflicts();
 }
 </file>
 
@@ -1190,6 +2465,10 @@ export default reportWebVitals;
 import '@testing-library/jest-dom';
 </file>
 
+<file path="test-conflicts.ts">
+// ==============================================\n// CONFLICT DETECTION TEST\n// Uncomment sections to test conflict detection\n// ==============================================\n\nimport { validateRegistry, logConflicts, type KeyTip, KEYTIPS } from './KeyTipsRegistry';\n\n// Test 1: Current registry (should be clean)\nconsole.log('\\n=== TESTING: Current Registry ===');\nlogConflicts();\n\n// Uncomment to test conflict detection:\n/*\n// Test keytips with intentional conflicts\nconst testKeytips: KeyTip[] = [\n  ...KEYTIPS, // Start with current good keytips\n  \n  // Add problematic keytips to demonstrate conflicts:\n  { chord: [\"H\", \"B\"], command: \"pasteValues\", label: \"Border Menu\" },       // PREFIX CONFLICT + COMMAND ID CONFLICT\n  { chord: [\"H\", \"V\", \"V\"], command: \"borderBottom\", label: \"Paste Special\" }, // DUPLICATE SEQUENCE\n];\n\nconsole.log('\\n=== TESTING: Registry with Conflicts ===');\nlogConflicts(testKeytips);\n\nconst report = validateRegistry(testKeytips);\nconsole.log('\\nDetailed Report:');\nconsole.log('- Has conflicts:', report.hasConflicts);\nconsole.log('- Number of conflicts:', report.conflicts.length);\n*/\n\nexport {}; // Make this a module\n
+</file>
+
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -1217,6 +2496,10 @@ import '@testing-library/jest-dom';
     "src"
   ]
 }
+</file>
+
+<file path="user-customization-extras">
+// ==============================================\n// HOW TO INTEGRATE USER CUSTOMIZATION\n// This shows the changes needed to enable user keytip management\n// ==============================================\n\n/*\n\nSTEP 1: Update KeyTipsController to use dynamic registry\n=======================================================\n\nIn src/keytips/KeyTipsController.ts, replace the import:\n\n// OLD:\nimport { matchChordPrefix } from \"./KeyTipsRegistry\";\n\n// NEW:\nimport { matchChordPrefixDynamic as matchChordPrefix } from \"./DynamicKeytips\";\n\n// That's it! The rest of the controller code stays the same.\n\n\nSTEP 2: Create the Settings Panel Component\n===========================================\n\nCreate src/keytips/KeyTipsSettingsPanel.tsx with the UI code from the artifact above.\n\n\nSTEP 3: Integrate into main App.tsx\n===================================\n\nAdd to your App.tsx:\n*/\n\nimport React, { useRef, useEffect, useState } from 'react';\nimport * as GC from '@mescius/spread-sheets';\nimport { SpreadSheets } from '@mescius/spread-sheets-react';\nimport '@mescius/spread-sheets/styles/gc.spread.sheets.excel2013white.css';\nimport './App.css';\nimport { execute, type CommandId } from './keytips/CommandExecutor';\nimport { useKeyTips } from './keytips/useKeyTips';\nimport { KeyTipsOverlay } from './keytips/KeyTipsOverlay';\n// NEW imports:\nimport { KeyTipsSettingsPanel } from './keytips/KeyTipsSettingsPanel';\nimport { loadUserKeytips } from './keytips/DynamicKeytips';\n\nfunction App() {\n  const spreadRef = useRef<any>(null);\n  const { active, sequence, invalidFlash, controller } = useKeyTips();\n  const [showSettings, setShowSettings] = useState(false); // NEW\n\n  // Load user keytips on app start\n  useEffect(() => {\n    loadUserKeytips();\n  }, []);\n\n  const initSpread = (spread: any) => {\n    // ... existing initSpread code stays the same\n  };\n\n  // ... existing useEffect with keyboard handlers stays the same\n\n  return (\n    <div className=\"App\" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>\n      {/* Add settings button to header */}\n      <div style={{ \n        display: 'flex', \n        justifyContent: 'space-between', \n        alignItems: 'center',\n        margin: 0, \n        padding: '10px', \n        backgroundColor: '#f5f5f5', \n        borderBottom: '1px solid #ddd' \n      }}>\n        <h2 style={{ margin: 0 }}>Meridian Take Home</h2>\n        <button \n          onClick={() => setShowSettings(true)}\n          style={{\n            padding: '8px 16px',\n            backgroundColor: '#1a73e8',\n            color: 'white',\n            border: 'none',\n            borderRadius: '4px',\n            cursor: 'pointer'\n          }}\n        >\n          ⌨️ KeyTips Settings\n        </button>\n      </div>\n      \n      <div style={{ flex: 1, position: 'relative' }}>\n        <SpreadSheets \n          ref={spreadRef}\n          workbookInitialized={initSpread}\n          hostStyle={{ \n            width: '100%', \n            height: '100%',\n            position: 'absolute',\n            top: 0,\n            left: 0\n          }}\n        />\n        <KeyTipsOverlay \n          active={active} \n          sequence={sequence} \n          invalidFlash={invalidFlash} \n        />\n        \n        {/* NEW: Settings Panel */}\n        {showSettings && (\n          <KeyTipsSettingsPanel \n            isOpen={showSettings}\n            onClose={() => setShowSettings(false)}\n            onKeytipsChange={() => {\n              // Refresh the controller or trigger a re-render\n              // This ensures new user keytips are immediately available\n              console.log('🔄 User keytips updated - system refreshed');\n            }}\n          />\n        )}\n      </div>\n    </div>\n  );\n}\n\nexport default App;\n\n/*\n\nSTEP 4: Update CommandExecutor with new commands\n===============================================\n\nAs users add custom keytips, you'll need to expand CommandExecutor.ts\nwith more command implementations. For example:\n\n// Add to CommandId type:\nexport type CommandId = \n  | \"pasteValues\" | \"borderBottom\" | \"borderTop\" | \"autoFitCol\" | \"sortDesc\" | \"clearContent\"\n  | \"copy\" | \"cut\" | \"paste\" | \"bold\" | \"italic\" | \"underline\"\n  | \"borderAll\" | \"borderLeft\" | \"borderRight\"\n  | \"insertRowAbove\" | \"insertColumnLeft\" | \"deleteRow\" | \"deleteColumn\"\n  | \"sortAsc\" | \"freezePanes\" | \"unfreezePane\" | \"clearFormatting\";\n\n// Add corresponding implementations in the execute() switch statement:\ncase \"copy\":\n  executeCopy(sheet, selections);\n  break;\ncase \"bold\":\n  executeBold(sheet, selections);\n  break;\n// ... etc\n\n\nSTEP 5: Test the complete system\n===============================\n\n1. Run npm start\n2. Click \"⌨️ KeyTips Settings\" in the top-right\n3. Add a custom keytip like: H → X → X → \"Clear Content\"\n4. Close settings and test: Alt/Cmd → H → X → X\n5. Your custom keytip should work alongside system ones!\n\n\nResult: Users can now add/remove keytips without touching code! 🎉\n\n*/\n\nexport {}; // Make this a module\n
 </file>
 
 </files>

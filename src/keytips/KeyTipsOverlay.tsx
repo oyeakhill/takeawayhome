@@ -23,7 +23,7 @@ export function KeyTipsOverlay({ active, sequence, invalidFlash }: {
       fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
       fontSize: 14,
       boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
-      zIndex: 9999,
+      zIndex: 10001, // Above protective overlay
       userSelect: "none",
       pointerEvents: "none",
       transition: "background 150ms ease, border 150ms ease, color 150ms ease",

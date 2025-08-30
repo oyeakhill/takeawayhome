@@ -3,7 +3,7 @@
 // Headless controller for KeyTips state machine
 // ==============================================
 
-import { matchChordPrefix } from "./KeyTipsRegistry";
+import { matchChordPrefixDynamic as matchChordPrefix } from "./DynamicKeytips";
 
 export type Mode = "inactive" | "collecting";
 

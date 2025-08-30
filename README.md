@@ -1,186 +1,127 @@
-## Overview
+# Project Overview
 
-Your task is to implement a keyboard-driven command interface for a web-based spreadsheet application, similar to Excel's KeyTips feature. This system allows users to execute spreadsheet commands through sequential keyboard shortcuts.
+This project implements a keyboard-driven command interface for a web-based spreadsheet application. It replicates the **KeyTips** feature similar to Microsoft Excel, where users can execute spreadsheet commands through sequential keyboard shortcuts. This system is designed to improve productivity for power users, especially in environments like finance or consulting, where keyboard navigation is essential.
 
-**Time Expectation**: 1-2 hours
-**Deliverables**: A working implementation and documentation in a GitHub pull request.
+---
 
-## What are KeyTips?
+## Objectives
 
-KeyTips provide keyboard accessibility by:
+The initial goal of this project was to implement a system that allows users to perform actions in a spreadsheet by entering a series of keyboard shortcuts, much like Excel’s KeyTips.
 
-* Activating with Alt (Windows/Linux) or Cmd (Mac)
-* Showing visual overlays of available keyboard shortcuts
-* Allowing sequential key presses to navigate and execute commands
-* Example: Alt → H → V → V executes "Paste Values"
+### Key Features
 
-Watch this [Excel KeyTips demonstration](https://www.youtube.com/watch?v=emU9KcZKw9k) to understand the user experience. Note: The ribbon interface shown is not required for your implementation.
+* **Activation**: The system is activated by pressing `Alt` (Windows/Linux) or `Cmd` (Mac).
+* **Sequential Input**: Users enter commands by pressing keys one at a time.
+* **Visual Feedback**: The system provides visual feedback on the current key sequence and available options.
+* **Action Execution**: Once the correct sequence is entered, the corresponding action is executed (e.g., "Paste Values").
 
-You can also see [how KeyTips are implemented in Meridian](https://drive.google.com/file/d/1-GANv2HjCTGD7TGFt6htRV2emEpIIZDn/view?usp=sharing) for reference. Note: Your UI implementation does not need to look the same as Meridian's interface.
+The system supports **5 predefined KeyTips**:
 
-## Why This Matters
+* `Alt/Cmd + H + V + V`: Paste Values
+* `Alt/Cmd + H + B + B`: Border Bottom
+* `Alt/Cmd + H + B + T`: Border Top
+* `Alt/Cmd + H + O + I`: AutoFit Column
+* `Alt/Cmd + A + S`: Sort Descending
 
-For many financial professionals—especially in banking and consulting—Excel is their IDE. They rely almost entirely on the keyboard, navigating and editing at high speed with muscle memory alone. Reaching for the mouse breaks flow. KeyTips aren’t just a nice-to-have—they’re essential to preserving the kind of power-user experience that makes spreadsheets feel seamless. This assignment simulates how we bring that level of keyboard-driven efficiency into a modern, web-based spreadsheet environment.
+---
 
-## Requirements
+## Additional Features
 
-### 1. Implement These 5 KeyTips
+In addition to the core functionality requested, the system includes a **dynamic KeyTips management system**, allowing users to:
 
-| Shortcut            | Action          | Description                             |
-| ------------------- | --------------- | --------------------------------------- |
-| Alt/Cmd + H + V + V | Paste Values    | Paste only values (not formulas)        |
-| Alt/Cmd + H + B + B | Border Bottom   | Add bottom border to selected cells     |
-| Alt/Cmd + H + B + T | Border Top      | Add top border to selected cells        |
-| Alt/Cmd + H + O + I | AutoFit Column  | Adjust column width to fit content      |
-| Alt/Cmd + A + S     | Sort Descending | Sort selected cells in descending order |
+* **Add Custom KeyTips**: Users can define their own key sequences for custom actions.
+* **Remove Custom KeyTips**: Custom key sequences can be deleted.
+* **Real-time KeyTip Management**: The interface supports real-time updates and validation when adding or removing KeyTips.
 
-### 2. User Experience Requirements
+### Developer Features:
 
-* **Activation**: Pressing Alt/Cmd should activate the KeyTips system
-* **Sequential Input**: Keys are pressed one at a time (not simultaneously)
-* **Visual Feedback**: Display the currently active key sequence
-* **Cancellation**: Allow users to exit at any point (Esc or clicking away)
-* **Action Behavior**: Each action should work equivalently to Google Sheets
+* **Dynamic Registry**: The KeyTips registry can be updated dynamically during runtime without requiring a full application rebuild.
+* **Conflict Detection**: The system includes automatic conflict detection, ensuring that KeyTips do not overlap or cause unintended behavior.
+* **Command Integration**: New commands can easily be added by extending the `CommandExecutor` and updating the `KEYTIPS` registry.
 
-### 3. Technical Requirements
+---
 
-* Design the system to support 100+ potential keytips (not just the 5 required)
-* Use the provided spreadsheet library
-* Create a `keytips.md` file explaining how to add new keytips
+## Project Structure
 
-### 4. Documentation & Submission
+Here is a brief overview of the file structure:
 
-Submit a PR containing:
+```
+src/
+├── keytips/
+│   ├── CommandExecutor.ts       ← Command actions (e.g., Paste, Bold, AutoFit)
+│   ├── KeyTipsController.ts     ← Core logic for KeyTips state machine
+│   ├── KeyTipsOverlay.tsx       ← UI for displaying key sequence and feedback
+│   ├── KeyTipsSettings.tsx      ← React component for managing user KeyTips
+│   ├── KeyTipsRegistry.ts       ← Registry of all system and custom KeyTips
+│   └── DynamicKeytips.ts        ← User-defined KeyTips and dynamic registry management
+├── App.tsx                      ← Main application component
+├── App.css                      ← Styles for the app and KeyTips UI
+└── index.tsx                    ← React entry point
+```
 
-* Your implementation code
-* `keytips.md` - Instructions for adding new keytips
-* Updated README listing what you would improve to consider the system "production grade", ranked by importance
+---
 
-## Getting Started & Submission Steps
+## How to Use
 
-1. Clone this repository locally and create a separate private repo for permission (add gfang200 as a collaborator)
-2. Install dependencies:
+### For Business Users
+
+1. **Activate KeyTips**: Press `Alt` (Windows/Linux) or `Cmd` (Mac) to activate the system.
+2. **Enter Key Sequences**: After activation, type the corresponding keys for one of the available actions.
+3. **Custom KeyTips**: Through the **Settings panel**, you can add your own custom keyboard shortcuts for actions that are not included by default. The sequence should follow the format `Alt/Cmd → Key → Key → Key...`.
+4. **Settings Panel**: You can access the KeyTips settings panel by clicking on the "⌨️ KeyTips Settings" button at the top-right of the spreadsheet interface. From there, you can manage, add, or remove KeyTips.
+
+### For Developers
+
+1. **Clone the Repository**: Start by cloning the repository and installing dependencies:
 
    ```bash
+   git clone <repository-url>
+   cd project-directory
    npm install
    ```
-3. Start the development server:
+2. **Run the Development Server**: Start the application:
 
    ```bash
    npm run start
    ```
-4. Implement the KeyTips system
-5. Push your work to your cloned private repository and share the link
+3. **Adding New KeyTips**: To add a new KeyTip, follow these steps:
 
-## What We're Looking For
+   * **Step 1**: Define the new sequence in the `KEYTIPS` array in `KeyTipsRegistry.ts`.
+   * **Step 2**: Implement the corresponding action in the `CommandExecutor.ts`.
+   * **Step 3**: Use the **Settings panel** to test your new KeyTip and add/remove it dynamically.
+4. **Conflict Management**: If you attempt to add a conflicting KeyTip, the system will automatically detect it and provide feedback. Conflicts can be caused by duplicate sequences or prefix overlaps.
 
-**No pressure!** We know this is a time-pressured challenge, and we're not expecting a perfect, production-ready system. Our goal is to understand how you approach problems and make decisions within realistic time constraints.
+### Example: Add a Custom Command
 
-We love to see:
+To add a custom command, such as freezing the first row:
 
-* Clear thought process and systematic approach to tackling implementation challenges
-* Intentional balance between features and infrastructure with ruthless prioritization when time or knowledge is limited
-* Proactive handling of edge cases and adherence to best practices
-* Effective use of AI tools, documentation, and other resources to solve problems efficiently
-* Strong ability to autonomously understand and extend requirements from the examples provided
+1. Add it to the registry:
 
-Remember: This is about understanding your development approach, not getting everything perfect. Focus on the MVP requirements and share your thoughts on what you'd improve for production use!
+   ```typescript
+   {
+     chord: ["H", "F", "S"],
+     command: "freezeFirstRow",
+     label: "Freeze First Row"
+   }
+   ```
+2. Implement the command in `CommandExecutor.ts`:
 
-## Tips
-
-* Use AI tools effectively but don't get stuck. SpreadJS documentation ([https://developer.mescius.com/spreadjs/docs/overview](https://developer.mescius.com/spreadjs/docs/overview)) is also a great resource
-* Try performing these operations manually in Google Sheets to understand the expected behavior and user experience
-* Consider how the system should handle cases like invalid key sequences
-* Feel free to make implementation decisions that best showcase your skills!
-
-Good luck! If you have questions about how any specific Google Sheets behavior works, please ask for clarification.
-
----
-
-## 🚀 Production-Grade Improvements
-
-**Ranked by importance for production deployment:**
-
-### **1. User-Facing KeyTips Customization UI** 🎯 **CRITICAL**
-**Impact**: High - Enables end users to create custom shortcuts without developer intervention
-- Settings panel accessible from spreadsheet UI
-- Visual editor for creating/editing/deleting keytips  
-- Real-time conflict detection and validation
-- Import/export of keytip configurations
-- Command discovery with user-friendly names
-- Persistence to user profile/localStorage
-
-### **2. SpreadJS Cell Editor Interference Resolution** 🐛 **HIGH**
-**Impact**: High - Currently causes data loss when using keytips
-- Research SpreadJS APIs to disable cell editing during keytip collection
-- Implement cell value preservation during keytip sequences
-- Add invisible overlay to capture keyboard events before SpreadJS
-- Test edge cases with formulas, formatted cells, and protected ranges
-
-### **3. Comprehensive Command Library** 📚 **HIGH** 
-**Impact**: High - Essential for feature parity with Excel
-- Implement 50+ common spreadsheet commands
-- Categorize commands (Format, Data, Insert, View, etc.)
-- Add complex operations (pivot tables, charts, conditional formatting)
-- Support for multi-step commands and sub-menus
-- Contextual command availability based on selection
-
-### **4. Advanced KeyTips Discovery & Help** 💡 **MEDIUM**
-**Impact**: Medium - Improves user adoption and discoverability  
-- Interactive help overlay showing available keytips
-- Search functionality for commands
-- Tutorial mode for new users
-- Contextual hints based on current selection
-- Quick reference card (printable/PDF)
-
-### **5. Accessibility & Internationalization** 🌍 **MEDIUM**
-**Impact**: Medium - Required for global enterprise deployment
-- Screen reader compatibility with ARIA labels
-- High contrast mode support  
-- Keyboard layout adaptation (QWERTY, AZERTY, etc.)
-- Localization of command names and keytips
-- Right-to-left language support
-
-### **6. Performance & Scalability Optimization** ⚡ **MEDIUM**
-**Impact**: Medium - Important for large spreadsheets and many custom keytips
-- Lazy loading of command executors
-- Efficient prefix tree implementation for 1000+ keytips
-- Memory optimization for large datasets
-- Web Worker usage for complex commands
-- Caching of frequently used command results
-
-### **7. Enterprise Integration & Security** 🔒 **MEDIUM** 
-**Impact**: Medium - Required for corporate environments
-- Admin-defined keytip templates and restrictions
-- Integration with corporate identity systems
-- Audit logging of keytip usage
-- Data loss prevention hooks
-- Compliance with enterprise security policies
-
-### **8. Advanced UX Polish** ✨ **LOW**
-**Impact**: Low - Nice-to-have improvements for user experience
-- Animated transitions and micro-interactions
-- Sound feedback (optional)
-- Themeable overlay design
-- Mobile/touch device support
-- Gesture recognition for tablets
-
-### **9. Analytics & Telemetry** 📊 **LOW**
-**Impact**: Low - Useful for product improvement but not user-critical
-- Usage analytics for popular keytips
-- Performance metrics and error tracking
-- A/B testing framework for new features
-- User feedback collection system
-- Command execution latency monitoring
-
-### **10. Developer Experience Enhancements** 🛠️ **LOW**
-**Impact**: Low - Helpful for maintainability but not user-facing
-- Comprehensive test suite (unit, integration, e2e)
-- TypeScript strict mode compliance
-- Automated conflict detection in CI/CD
-- Performance benchmarking suite
-- Plugin architecture for third-party commands
+   ```typescript
+   case "freezeFirstRow":
+     sheet.frozenRowCount(1);
+     break;
+   ```
 
 ---
 
-**MVP Status**: Core functionality complete with registry-based architecture supporting 100+ keytips, conflict detection, and full documentation. Ready for user customization UI implementation.
+## KeyTips UI
+
+The **KeyTips Overlay** will display the current sequence as users type. If the sequence is invalid or incomplete, it will flash a warning.
+
+---
+
+## Conclusion
+
+This project offers a robust, customizable system for implementing **keyboard-driven command execution** within a web-based spreadsheet. The dynamic nature of the KeyTips system allows both **business users** to add their own shortcuts and **developers** to extend functionality quickly, making it a versatile solution for enhancing productivity in spreadsheet applications.
+
+
